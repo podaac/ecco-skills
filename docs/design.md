@@ -635,22 +635,39 @@ against the tutorial's published figures; do not assume it's importable from `ec
 
 Uses: `spatial-difference`, `spatial-interpolation`, `compute-coriolis`, `rotate-to-geographic`
 
-#### `compute-thermal-wind`
+#### ✅ `compute-thermal-wind` — BUILT 2026-08-04 (shear + reconstruction in one skill)
 The thermal wind relation connects vertical shear to horizontal density gradients:
 ```python
 dv/dz = -(g/(f*rho)) * drho/dx
 du/dz = (g/(f*rho)) * drho/dy
 ```
+Built as **one skill covering both `compute-thermal-wind` (the shear) and
+`reconstruct-velocity-from-thermal-wind` (the integration below).** Output is in **model x/y**
+coords (like geostrophy); the density gradient uses the same `xgcm.diff → interp_2d_vector`
+pattern; the vertical derivative differences over `k` / divides by `drC` (center quantity).
 
-Uses: `spatial-difference`, `spatial-interpolation`, `vertical-difference`, `compute-coriolis`, `rotate-to-geographic`
+**Rung-1 is N/A — there is NO official `thermal_wind_compute` helper** (confirmed: only
+`geos_vel_compute` exists in `ecco_po_tutorials.py`; the tutorial spreads thermal wind across
+cells). Correctness rests on three cross-checks (strongest first): **(1)** the shear
+reproduces ∂/∂z of the geostrophic velocity from the same pressure field to **corr 0.999**
+(analytic identity — thermal wind IS ∂/∂z of geostrophic balance); **(2)** predicted shear
+vs the model's *actual* velocity shear (corr 0.64/0.85 — independent variable/path);
+**(3)** velocity reconstructed from z0=-3000 m vs the model's *actual* velocity along 26°N
+(normalized diff ~0.23, 100–1000 m — the tutorial's deliverable). Teeth-verified. See
+`compute-thermal-wind/references/acceptance.md`. *(Rung-7 adversarial pass still pending.)*
+
+Uses: `load-field` (RHOAnoma + UVEL/VVEL for the check), `load-grid`. Level-1 primitives
+still inlined (extraction deferred until a 3rd caller — see roadmap).
 
 #### `reconstruct-velocity-from-thermal-wind`
 Integrate thermal wind vertically from a "level of no motion" (z_0):
 ```python
 v_g(z) = integral from z_0 to z of: -(g/(f*rho)) * drho/dx dz
 ```
-
 Requires upward integration above z_0 and downward integration below z_0, then combining.
+**✅ Built as part of `compute-thermal-wind`** (2026-08-04) — the `reconstruct_velocity()`
+function, `z0=-3000 m` default, upward+downward integration then combine (transcribed from
+the tutorial's cell 21).
 
 #### `compute-ocean-heat-content`
 Volume-integrated ocean heat content. THETA is **potential** temperature (deg C), so this is heat content relative to 0 deg C:

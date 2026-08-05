@@ -55,6 +55,23 @@ strengthened the evidence (independent velocity check added). Documented limitat
 (not errors): model-axis output, coastal NaN-bleed, tile-seam `extend` — all inherited
 from the official reference. Record: `compute-geostrophic-balance/references/acceptance.md`.
 
+### `compute-thermal-wind` (Recipe 3) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+
+| Rung | Status | Evidence / gap |
+|------|--------|----------------|
+| 1 official helper | N/A | No `thermal_wind_compute` in `ecco_po_tutorials.py` (only `geos_vel_compute`; confirmed by listing all module functions). Tutorial spreads it across cells. |
+| 2 tutorial number | ✅ (regime) | Reproduces the tutorial's 26°N reconstruction-vs-actual normalized-difference diagnostic (median 0.231, 100–1000 m). Tutorial publishes a curve, not a scalar. |
+| 3 conservation | N/A | Diagnostic shear, not a budget. |
+| 4 physical sanity | ✅ | Off-eq |∂v/∂z| ~2.5e-5 s⁻¹ (max ≪ 1e-2); reconstructed speed max ~0.40 m/s. Runtime L3 guard. |
+| 5 cross-check | ✅ | **(1) identity:** shear ≈ ∂/∂z of geostrophic velocity, corr **0.999** (1.40M pts). **(2) independent:** predicted vs ACTUAL velocity shear, corr 0.64/0.85 (1.41M pts) — different variable/path. |
+| 6 regression (teeth) | ✅ | `test_thermal_wind.py`: 3 data cross-checks + 6 offline guards. Teeth verified: sign flip fails checks 1–3; dropping `g` fails check 3 (magnitude). |
+| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — the final gate before "done". |
+
+**Status: NOT yet DONE** — all rungs cleared **except** the Rung-7 adversarial pass, which
+is required by verify.md before a science skill is marked ✅. Report as ⚠️ (evidence-backed,
+independently cross-checked, but not adversarially reviewed). Record:
+`compute-thermal-wind/references/acceptance.md`.
+
 ---
 
 ## Infrastructure skills
@@ -79,6 +96,7 @@ helpers where relevant + the `ecco-common` regression suite.)*
 | `ecco-common/tests/test_ecco_common.py` | 13 | ✅ (reintroducing the size-guard sidecar bug fails it) |
 | `compute-ocean-heat-content/scripts/test_validation.py` | 10 (+1 Rung-2 tutorial check) | ✅ (bad-input cases fail; land-NaN passes) |
 | `compute-geostrophic-balance/scripts/test_geostrophic.py` | Rung-1 match + 5 guards | ✅ (breaking equatorial mask fails it) |
+| `compute-thermal-wind/scripts/test_thermal_wind.py` | 3 cross-checks + 6 guards | ✅ (sign flip fails checks 1–3; dropping `g` fails check 3) |
 | Run all: `.claude/skills/run_all_tests.py` | all of the above | — |
 
 **Not yet automated (open, per verify.md / evals):** CI wiring; exact dependency lockfile;

@@ -64,6 +64,9 @@ Everything afterward runs with `.venv/bin/python` — no manual "activate" neede
 # Geostrophic velocities for a month:
 .venv/bin/python .claude/skills/compute-geostrophic-balance/scripts/run.py 2000-01
 
+# Thermal-wind shear + velocity reconstruction for a month:
+.venv/bin/python .claude/skills/compute-thermal-wind/scripts/run.py 2000-01
+
 # Plot a global sea-surface-temperature map:
 .venv/bin/python .claude/skills/plot-ecco-field/scripts/run.py \
     --collection ECCO_L4_TEMP_SALINITY_LLC0090GRID_MONTHLY_V4R4 \
@@ -93,6 +96,7 @@ triggers:
 |----------|--------------------------|---------------------|
 | **"How much has ocean heat content changed between two months?"** | **1.** `load-grid` → **2.** `load-field` (THETA/SALT, month A) → **3.** *validate* → **4.** `load-field` (THETA/SALT, month B) → **5.** *validate* → **6.** *difference* | Grid gives cell volumes (`rA·drF·hFacC`); each month's temperature is volume-weighted and summed to OHC; the physical-bounds/benchmark checks run per month; the two are differenced (the change is what's physical). |
 | **"Compute geostrophic velocities for a month."** | **1.** `load-grid` → **2.** `load-field` (density/pressure `RHOAnoma`,`PHIHYDcR`) → **3.** *compute* → **4.** *validate* | Grid supplies `dxC/dyC`, `YC`, and the xgcm object; the pressure gradient is differenced on the C-grid and interpolated to tracer points; `v_g = ρ⁻¹∂p/∂x / f`; runtime checks confirm grid position, units, and off-equator bounds. |
+| **"Reconstruct the deep currents from density"** / **"where does density set the vertical current shear?"** (thermal wind) | **1.** `load-grid` → **2.** `load-field` (density `RHOAnoma`) → **3.** *compute shear* `∂u/∂z,∂v/∂z` → **4.** *reconstruct velocity from z0=−3000 m* → **5.** *validate* → **6.** `load-field` (UVEL/VVEL) → **7.** *cross-check vs actual velocity* | Grid supplies `dxC/dyC`, `drC`, `Z/Zl/Zu`, `YC`; the density gradient gives the thermal-wind shear `(g/fρ)∂ρ/∂x`; integrating it up/down from a level of no motion reconstructs the velocity; the reconstruction is then compared to the model's **actual** UVEL/VVEL (the currents field is loaded only for this check). |
 | **"Show me a global map of sea-surface temperature."** | **1.** `load-grid` → **2.** `load-field` (THETA) → **3.** `plot-ecco-field` (`--mode global`) | Grid gives `XC/YC` for re-projection; the field is loaded for the requested month; the official `ecco_v4_py` plotter stitches the 13 tiles into a lat-lon PNG in `./plots/`. |
 | **"Set up my environment"** / **"is my environment working?"** | **1.** `ecco-setup` (`survey` → build `.venv` → install) → **2.** `ecco-setup-verify` (auto-handoff) | Surveys the machine's Python, builds the isolated `.venv`, installs the stack, then proves it works (imports + a real `ecco.get_llc_grid` smoke test). Verify is also runnable on its own. |
 
@@ -102,9 +106,8 @@ real download URL → size-guard the request → download with `~/.netrc` auth �
 open as xarray. You never call that layer directly; the skills compose it.
 
 > The rows above are the **built** calculations. Questions about transports, budgets,
-> thermal wind, Ekman pumping, and steric height are *designed* (see
-> [`design.md`](design.md) → Calculation Recipes) but not yet implemented — the table
-> will grow as those land.
+> Ekman pumping, and steric height are *designed* (see [`design.md`](design.md) →
+> Calculation Recipes) but not yet implemented — the table will grow as those land.
 
 ---
 
@@ -123,6 +126,7 @@ open as xarray. You never call that layer directly; the skills compose it.
 ├── plot-ecco-field/            # PNG of a field: single tile / all tiles / stitched global map
 ├── compute-ocean-heat-content/ # ✅ Recipe 1 — volume-weighted OHC + change between months
 ├── compute-geostrophic-balance/# ✅ Recipe 2 — geostrophic velocities from pressure/density
+├── compute-thermal-wind/       # Recipe 3 — vertical shear from density + velocity reconstruction
 └── run_all_tests.py            # single entry point for all offline test suites
 
 docs/                           # living design + verification docs

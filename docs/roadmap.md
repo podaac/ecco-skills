@@ -171,12 +171,22 @@ science shouldn't be finalized until Phil weighs in.
 
 ## Phase 5 — Ageostrophic & diagnostics (Level 5)
 
-| Skill | Level |
-|---|---|
-| **`compute-curl`, `compute-ekman-transport`** + **Recipe 6 (Ekman pumping)** | 4–5 |
-| **`compute-thermal-wind`, `reconstruct-velocity-from-thermal-wind`** | 4 |
-| **`compute-steric-height`** | 4 |
-| **`compute-normalized-difference`** | 5 |
+| Skill | Level | Status |
+|---|---|---|
+| **`compute-curl`, `compute-ekman-transport`** + **Recipe 6 (Ekman pumping)** | 4–5 | designed |
+| **`compute-thermal-wind` + `reconstruct-velocity-from-thermal-wind`** (Recipe 3) | 4 | ✅ BUILT 2026-08-04 (one skill; ⚠️ Rung-7 adversarial pass pending) |
+| **`compute-steric-height`** | 4 | designed |
+| **`compute-normalized-difference`** | 5 | designed |
+
+**Recipe 3 status (built ahead of the rest of Phase 5, as the safe next step):**
+`compute-thermal-wind` covers both the shear and the velocity reconstruction. **No official
+helper exists** (Rung 1 N/A — only `geos_vel_compute` is in `ecco_po_tutorials.py`), so it's
+verified by three cross-checks: an analytic identity vs ∂/∂z of geostrophic velocity (corr
+0.999), an independent comparison vs the model's actual velocity shear (corr 0.64/0.85), and
+the tutorial's reconstruction-vs-actual normalized-diff diagnostic (~0.23). Teeth-verified.
+**Level-1 primitives still inlined** — thermal wind reused geostrophy's diff/interp *pattern*
+by re-implementing it (not by extracting shared primitives); extraction still deferred to the
+next caller (curl). ⚠️ A Rung-7 adversarial pass is the remaining gate before "done".
 
 ---
 

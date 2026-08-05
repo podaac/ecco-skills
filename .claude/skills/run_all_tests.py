@@ -23,6 +23,8 @@ SUITES = [
      os.path.join(_HERE, "compute-ocean-heat-content", "scripts", "test_validation.py")),
     ("compute-geostrophic-balance (Rung-1 match + guards)",
      os.path.join(_HERE, "compute-geostrophic-balance", "scripts", "test_geostrophic.py")),
+    ("compute-thermal-wind (cross-checks + guards)",
+     os.path.join(_HERE, "compute-thermal-wind", "scripts", "test_thermal_wind.py")),
 ]
 
 

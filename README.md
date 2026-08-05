@@ -18,9 +18,11 @@ You don't need to know Python, the grid, or where the data lives. You ask; the a
 |----------|-------------------|
 | **"How much has global ocean heat content changed between these two months?"** | The change in ocean heat content (in Joules), with a sanity-check trail — plausible temperature range, ocean-volume benchmark — so you can see it's trustworthy. |
 | **"Compute the geostrophic velocities for this month."** | Ocean current velocities implied by the pressure field, verified to match the official ECCO tutorial result *and* the model's own currents. |
+| **"If I only knew the ocean's density, how well could I reconstruct the deep currents?"** | Currents reconstructed from the density structure via thermal wind (integrated from a level of no motion), shown *alongside* how much they differ from the model's real currents — so you see both the estimate and its limits. |
+| **"Where does the density structure control the vertical shear of the currents?"** | The thermal-wind shear (how the current changes with depth), and where it does — and doesn't — explain the real flow. |
 | **"Show me a global map of sea-surface temperature."** | A publication-quality world map (PNG) of the field, correctly stitched across the whole globe. |
 
-Each answer comes with its reasoning and a ✅ / ⚠️ verdict — never just a bare number. More questions (transports across a section, heat/salt budgets, thermal wind, Ekman pumping, steric height) are [designed and coming](#build-status).
+Each answer comes with its reasoning and a ✅ / ⚠️ verdict — never just a bare number. More questions (transports across a section, heat/salt budgets, Ekman pumping, steric height) are [designed and coming](#build-status).
 
 **Curious how a question turns into an answer?** See [`docs/USAGE.md`](docs/USAGE.md#what-actually-runs-when-you-ask-a-question) for the exact step-by-step each question triggers.
 
@@ -55,9 +57,10 @@ The full protocol is in [`docs/verify.md`](docs/verify.md); the current per-calc
 | Field maps / visualization | ✅ working |
 | **Ocean heat content** (and its change over time) | ✅ **done** — fully validated |
 | **Geostrophic velocities** | ✅ **done** — matches the official ECCO result and the model's own currents |
-| Section transports, tracer budgets, thermal wind, Ekman pumping, steric height | 🔜 designed, not yet built (some await domain-expert review) |
+| **Thermal wind** (vertical current shear from density + velocity reconstruction) | ⚠️ built & cross-checked against the model's own currents; final adversarial review pending |
+| Section transports, tracer budgets, Ekman pumping, steric height | 🔜 designed, not yet built (some await domain-expert review) |
 
-This is **not yet** a general-purpose ECCO system — it's a tested foundation with two validated calculations and a planned path for the rest.
+This is **not yet** a general-purpose ECCO system — it's a tested foundation with a few validated calculations and a planned path for the rest.
 
 ---
 
