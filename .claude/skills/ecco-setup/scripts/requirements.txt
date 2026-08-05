@@ -1,0 +1,35 @@
+# ECCO skills environment — dependencies (venv + pip only, no conda).
+#
+# Python band: 3.11-3.12 (ecco_access requires >=3.11; geospatial wheels cap at 3.12).
+#
+# These lower bounds reflect a KNOWN-GOOD resolution built and smoke-tested on
+# macOS/arm64, Python 3.12.13, on 2026-07-23 (all installed as PyPI wheels — no
+# compilers needed). For a fully reproducible lockfile, run `pip freeze` in a fresh
+# .venv and commit the result; these >= bounds are the tested floor, not an exact pin.
+#
+# CRITICAL PIN: xgcm must be < 0.10. ecco_v4_py 1.8.1's get_llc_grid() calls
+# xgcm.Grid(ds, periodic=False, ...), and the `periodic=` argument was REMOVED in
+# xgcm 0.10.0 — so ecco_v4_py's own grid constructor crashes with xgcm >= 0.10.
+# xgcm 0.9.0 is the last version with the periodic=/boundary= API that ecco_v4_py
+# (and the ECCO tutorials) expect. Verified working 2026-07-23 with the real geometry
+# file. Do NOT relax this ceiling without re-testing ecco.get_llc_grid().
+
+# Core scientific stack
+numpy>=2.5
+xarray>=2026.7
+dask[complete]>=2026.7
+netCDF4>=1.7.4
+matplotlib>=3.11
+
+# ECCO / MITgcm grid tooling
+ecco_v4_py>=1.8.1
+xgcm>=0.8,<0.10        # <0.10 required: see CRITICAL PIN note above (0.9.0 verified)
+xmitgcm>=0.5.2
+
+# ECCO data access (PO.DAAC / Earthdata)
+ecco_access>=0.3.1
+
+# Geospatial (used by ecco_v4_py plotting / regridding) — ship as PyPI wheels
+cartopy>=0.25
+pyresample>=1.35
+cmocean>=4.0

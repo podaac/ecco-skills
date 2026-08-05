@@ -1,0 +1,10 @@
+# ECCO downloaded data cache — never commit (files up to ~60 MB each)
+/data/
+
+# Python venv
+/.venv/
+__pycache__/
+*.pyc
+
+# generated plots
+/plots/
