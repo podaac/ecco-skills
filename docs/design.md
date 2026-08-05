@@ -369,6 +369,23 @@ xgcm_grid.interp_2d_vector({"X": u_field, "Y": v_field}, boundary='extend')
 
 ## Data Access Pattern
 
+> **Decision: skills query the NASA CMR REST API *directly* (HTTPS) — they do NOT depend
+> on any MCP server (2026-08-04).** There is an "earthdata" MCP server (formerly named
+> "CMR") that exposes CMR collection/granule discovery as agent tools. It is a useful
+> *build-time / interactive* discovery aid — e.g. confirming a new collection's concept-ID
+> before hardcoding it — but the skills must not call it at runtime. Rationale:
+> (1) **standalone execution** — calc skills run as plain `.venv` Python (Option A), incl.
+> headless / CI / `run_all_tests.py` / a user with no agent session; an MCP tool is only
+> reachable through an MCP client loop, which would break that. (2) **Reproducibility &
+> verifiability** — the V&V protocol rests on pinned, inspectable behavior; an MCP server
+> is an unversioned moving target (it was *renamed* CMR→earthdata under us — exactly the
+> drift that would silently break a skill). The direct CMR REST contract is stable and is
+> what the offline suite monkeypatches (`_http_json`). (3) **Layering** — both
+> `ecco_common.access` and the earthdata MCP are *clients of CMR*; one client shouldn't
+> depend on another. **Rule:** MCP for build-time discovery only; direct CMR API for
+> everything the skills do. (All "CMR" references in this repo mean the NASA Common
+> Metadata Repository API at `cmr.earthdata.nasa.gov`, never an MCP tool.)
+
 > **Credentials prerequisite (NASA Earthdata Login).** Downloading ECCO from PO.DAAC requires a free **Earthdata Login** account and credentials stored locally (typically a `.netrc` file, or an Earthdata token). This is a *separate* setup step from the Python environment and is a common first-time stumbling block. The `ecco-setup` / `ecco-setup-verify` skills should: check for working credentials, walk a new user through creating an Earthdata account and the `.netrc` if missing, and confirm access with a single small test download **before** any real calculation attempts to pull data. Treat "no credentials" as a clear, guided stop — not a cryptic download error.
 
 The tutorials use `ecco_access` for downloads:
@@ -452,7 +469,7 @@ We do **not** bulk-download the archive, and we do **not** treat downloads as th
 
 ### Rules for the cache (enforced by the load skills)
 
-- **`.gitignore` the data dir** — never commit `.nc` files (some are 60 MB). The project `.gitignore` lists `/data/` and `/.venv/` (plus `__pycache__/`, `*.pyc`). *Caveat:* the leading-slash `/data/` pattern only matches the cache at the project root — the default. If `ECCO_DATA_DIR` is overridden to point elsewhere inside the repo, that path isn't covered by this rule. *(Note: the project is not yet a git repo, so `.gitignore` is dormant until `git init`; the rules are in place and correct for when it is.)*
+- **`.gitignore` the data dir** — never commit `.nc` files (some are 60 MB). The project `.gitignore` lists `/data/`, `/.venv/`, and `/plots/` (plus `__pycache__/`, `*.pyc`). *Caveat:* the leading-slash `/data/` pattern only matches the cache at the project root — the default. If `ECCO_DATA_DIR` is overridden to point elsewhere inside the repo, that path isn't covered by this rule. *(The project is now a git repo — public at https://github.com/podaac/ecco-skills — so these ignore rules are live; verified `data/`, `.venv/`, and `plots/` are untracked.)*
 - **Size-aware guard before downloading.** Estimate the download size first; if it's large (>~1 GB), **tell the user and ask** rather than silently pulling tens of GB. Implemented: `ecco_common.access.check_download_size` / `SIZE_WARN_MB = 1024`. **Two subtleties fixed after eval #3 (2026-07-25):** (a) granule size is read from the archive entry whose `Name` exactly matches the `.nc` file (preferring `SizeInBytes`) — a CMR record also lists a tiny `.sha512` sidecar, and taking the "first MB entry" could grab that (~200 bytes) and defeat the guard; (b) the guard is applied **once over the whole request** (all requested months/days), not per-file — otherwise a 100-day request slips through 29 MB at a time. A granule reporting *no* size also trips the guard (a missing size can't hide a big download). Verified: a 40-day (~1.2 GB) request is correctly blocked.
 - **Cache-hit reporting (teach-as-you-go):** say "using cached file X" vs "downloading X (30 MB)…" so the user sees what's happening.
 - **Configurable location, project-local default.** Default to `./data/ecco/`; override with the **`ECCO_DATA_DIR`** env var so a user who wants one shared cache across projects can point at, say, `~/ecco_data`. ECCO data is not project-specific, so a shared cache is a legitimate preference.
@@ -1098,6 +1115,7 @@ this summary.)*
 - **Data storage (decided 2026-07-23):** cache-on-demand in project-local `./data/ecco/<ShortName>/`, gitignored, with a size-aware download guard. Never bulk-download (full archive ~90–100 GB); individual analyses are 16–350 MB. See "Data Storage Strategy" section.
 - **Skill composition (decided & built 2026-07-23):** Option A — shared `ecco_common` package that skills import; calculation skills run in one venv-python process passing in-memory xarray objects between imported helpers. Env skills stay subprocess-style (interpreter boundary). See "How skills compose."
 - **Downloads use CMR + requests/.netrc, not `ecco_access`** — verified working; `requests` (not urllib) is required so Earthdata's URS redirect carries auth (urllib 401'd).
+- **No MCP-server dependency (decided 2026-08-04):** skills call the NASA CMR REST API directly; they do NOT depend on the "earthdata" (formerly "CMR") MCP server. MCP is fine for build-time/interactive discovery, but runtime must stay standalone, reproducible, and pinned. See the decision note at the top of the Data Access Pattern section.
 - **Month selection queries mid-month** — monthly-mean granules overlap at month edges, so an edge-aligned range pulls the neighbouring month too; `load_field(months=[...])` queries the 14th–16th to get exactly the intended month.
 - **All 10 CMR collections verified** (core + flux + stress + bolus) with concept IDs recorded in the Data Access section; Jan-2000 tutorial granule confirmed to exist.
 

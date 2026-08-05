@@ -200,8 +200,10 @@ science shouldn't be finalized until Phil weighs in.
      (currently surfaces a 401 with a pointer, could guide account/`.netrc` setup).
    - Recipe 1: seasonal-cycle averaging for a rigorous OHC *trend* (snapshot
      month-to-month differences are noisier).
-   - `git init` not yet run — `.gitignore` (`/data/`, `/.venv/`) is in place and
-     dormant until it is.
+   - ✅ **Git repo now set up** — public at https://github.com/podaac/ecco-skills
+     (remote `origin`, branch `main`). `.gitignore` (`/data/`, `/.venv/`, `/plots/`)
+     is live; `data/`, `.venv/`, `plots/` confirmed untracked. **Remaining:** add a
+     README before it's useful to outside visitors; wire the test suite into CI.
 
 5. **Every calc skill ships a `scripts/test_validation.py`** (negative + positive guard
    tests), per the pattern Recipe 1 established. A guard that only ever passes could be
