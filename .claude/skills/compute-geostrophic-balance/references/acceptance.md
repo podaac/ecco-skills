@@ -18,7 +18,7 @@ V&V per `docs/verify.md`. This skill is notable as the first to satisfy **Rung 1
 | 2 tutorial number | N/A | Tutorial publishes figures/arrays, not a scalar. |
 | 3 conservation | N/A | Diagnostic velocity, not a budget. |
 | 4 physical sanity | ✅ | Surface geostrophic *speed* median ≈ 0.029 m/s off-equator; Gulf Stream / Kuroshio box max ≈ 0.32/0.31 m/s (sane for LLC90 monthly means). |
-| 5 internal cross-check | ✅ | **Independent** comparison to the model's ACTUAL UVEL/VVEL at ~200 m: corr(u)=0.998, corr(v)=0.998, median normalized diff = 0.032 over 45,745 points. Different variable + code path → rules out a bug shared with the reference. Automated in `test_geostrophic.py`. **This is the strongest correctness evidence.** |
+| 5 internal cross-check | ✅ | **Independent** comparison to the model's ACTUAL UVEL/VVEL at ~350 m: corr(u)=0.998, corr(v)=0.998, median normalized diff = 0.032 over 45,745 points. Different variable + code path → rules out a bug shared with the reference. Automated in `test_geostrophic.py`. **This is the strongest correctness evidence.** |
 | 6 regression (teeth) | ✅ | `test_geostrophic.py` = Rung-1 match + independent-velocity check + 5 guard cases. Teeth verified: `EQ_BAND_DEG=0` (breaking equatorial masking) makes a guard case fail. |
 | 7 adversarial review | ✅ | Independent disprove-pass (2026-07-25): **zero confirmed errors** after attacking signs (verified from first principles), the rhoConst factor, grid staggering, NaN handling, the test's discriminating power, and physical plausibility (incl. its own UVEL/VVEL comparison). |
 

@@ -9,10 +9,10 @@ what's left after squeezing out everything that didn't actually need your judgme
 **Context on how we're building:** each calculation is verified against ground truth
 before we call it done — e.g. our geostrophic-velocity skill reproduces the tutorial's own
 `geos_vel_compute` to <1e-9 m/s *and* independently matches the model's actual velocities
-at 200 m (corr 0.998). Ocean heat content reproduces the tutorial's published ocean
-surface area exactly. Where a tutorial helper or a physical cross-check exists, we don't
-need to ask you. The questions below are the ones with **no ground-truth to check against**
-— only your expertise.
+in the ocean interior (~350 m; corr 0.998). Ocean heat content reproduces the tutorial's
+published ocean surface area exactly. Where a tutorial helper or a physical cross-check
+exists, we don't need to ask you. The questions below are the ones with **no ground-truth
+to check against** — only your expertise.
 
 Each question notes **what it unblocks** so you can prioritize.
 

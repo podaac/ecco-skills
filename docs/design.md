@@ -1169,9 +1169,13 @@ for an oceanographer, with what each item unblocks). Summary here for working co
    grouping (flux anomaly / time-mean eddy / full instantaneous split). *Unblocks: Recipe 5.*
 3. **Budget term lists, signs, residual definition** (`compute-tracer-budget`) — exact
    advective/diffusive/forcing terms, z* handling, normalized residual units.
-   *Unblocks: Recipe 3 (heat/salt/volume budgets).*
+   *Unblocks: the heat/salt/volume budget skills.*
 4. **Scientific-fit check** (ongoing) — is each calculation, as scoped, the one the
    science actually needs. *Applies to every skill.*
+5. **Ekman-transport comparison target** (`compute-ekman-transport`) — which model
+   comparison (ageostrophic residual vs raw upper-ocean velocity vs …) and over what
+   "upper ocean" depth. No ECCO tutorial exists for it, so verification hinges on this.
+   *Unblocks: `compute-ekman-transport` (deferred pending this answer).*
 
 *(If you edit these, edit `questions-for-phil.md` first — it's canonical — then re-sync
 this summary.)*

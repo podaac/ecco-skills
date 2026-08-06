@@ -101,6 +101,10 @@ Maximize Rungs 1–7 first; escalate to Phil only what genuinely needs judgment:
    z-star handling, residual definition/units.
 4. **"Does this answer the actual scientific question?"** — a skill can be a provably
    correct implementation of a calculation that doesn't address the user's real intent.
+5. **Ekman-transport comparison target** — no ECCO tutorial exists for Ekman transport, so
+   there's no reference number/helper; the comparison to the model (ageostrophic residual
+   vs raw upper-ocean velocity) is a physical-intent call. `compute-ekman-transport` is
+   deferred pending this.
 
 Rule of thumb: **if verification requires knowing what's *physically intended* rather
 than what's *numerically correct*, it's a Phil question.** Everything else, verify

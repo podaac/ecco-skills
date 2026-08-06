@@ -8,7 +8,7 @@ description: Compute geostrophic velocities from ECCO pressure (PHIHYDcR) and de
 > **🔬 Verification status (per `docs/verify.md`): ✅ DONE.** Two independent checks, both
 > automated (`scripts/test_geostrophic.py`): (1) **reproduces** the official
 > `ecco_po_tutorials.geos_vel_compute` to <1e-9 m/s over 2.24M points; (2) **independently
-> corroborated** — matches the model's *actual* UVEL/VVEL at ~200 m (corr 0.998, median
+> corroborated** — matches the model's *actual* UVEL/VVEL at ~350 m (corr 0.998, median
 > normalized diff 0.032), which rules out a bug shared with the reference. Physical sanity
 > ✅, guards teeth-verified, and a **Rung-7 adversarial pass found zero correctness errors**
 > (2026-07-25). Two documented limitations: model-axis (not rotated) output, and coastal
@@ -64,7 +64,7 @@ ds_dp = load_field("ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4", months=[
 | 2 tutorial number | N/A | Tutorial publishes figures/arrays, not a scalar. |
 | 3 conservation | N/A | Not a budget. |
 | 4 physical sanity | ✅ | Surface geostrophic speed median ~0.029 m/s off-equator; WBC-box max ~0.32 m/s. |
-| 5 cross-check | ✅ | **Independent:** matches actual model UVEL/VVEL at ~200 m (corr 0.998, median norm-diff 0.032). Different variable + code path → rules out a bug shared with the reference. This is the strongest correctness evidence. |
+| 5 cross-check | ✅ | **Independent:** matches actual model UVEL/VVEL at ~350 m (corr 0.998, median norm-diff 0.032). Different variable + code path → rules out a bug shared with the reference. This is the strongest correctness evidence. |
 | 6 regression (teeth) | ✅ | `test_geostrophic.py`: Rung-1 match + independent-velocity check + guard cases; verified to fail when equatorial mask is broken. |
 | 7 adversarial | ✅ | Independent disprove-pass (2026-07-25): zero confirmed errors after attacking signs, rhoConst, staggering, NaN handling, test rigor, and physical plausibility. Its one substantive critique — overstated Rung-1 correctness claim — is now fixed (this table). |
 
@@ -78,7 +78,7 @@ ds_dp = load_field("ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4", months=[
 - **Comparing to model velocity** (the "does geostrophy hold?" question) is a *further*
   step — load `UVEL`/`VVEL`, interpolate to centers, and take a normalized difference.
   This skill computes the geostrophic estimate; the comparison recipe builds on it.
-  (The acceptance test *does* this comparison at 200 m as its correctness check.)
+  (The acceptance test *does* this comparison at ~350 m as its correctness check.)
 - **Coastal NaN-bleed (inherited from the official method).** PHIHYDcR is NaN on land;
   through `diff(boundary='extend')` + `interp_2d_vector`, NaNs propagate onto ~116k wet
   ocean cells adjacent to coasts/tile edges, so `u_g`/`v_g` are NaN there. The official

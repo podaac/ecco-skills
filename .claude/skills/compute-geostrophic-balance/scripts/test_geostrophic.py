@@ -139,7 +139,7 @@ def test_validate_negative_and_positive():
 def test_independent_corroboration_vs_model_velocity():
     """INDEPENDENT correctness check (rules out a shared bug with the reference):
     compare our geostrophic u_g/v_g to the model's ACTUAL UVEL/VVEL in the ocean
-    interior (~200 m), where geostrophy should dominate. This is stronger evidence than
+    interior (~350 m), where geostrophy should dominate. This is stronger evidence than
     the Rung-1 helper match, because UVEL/VVEL come from a completely different variable/
     computation, not the pressure field. Expected (per the tutorial + adversarial
     review): high correlation (~0.99) and small normalized difference at depth.
@@ -168,7 +168,7 @@ def test_independent_corroboration_vs_model_velocity():
             {"X": ds_vel.UVEL, "Y": ds_vel.VVEL}, boundary="extend")
     u_act, v_act = vel_c["X"], vel_c["Y"]
 
-    k = 20   # ~200 m: below the Ekman layer, geostrophy should dominate
+    k = 20   # ~350 m: well below the Ekman layer, geostrophy should dominate
     eqmask = np.abs(lat.values) >= run.EQ_BAND_DEG
     def _flat(a):
         arr = np.squeeze(np.asarray(a.isel(k=k).values))
@@ -185,18 +185,18 @@ def test_independent_corroboration_vs_model_velocity():
     den = np.hypot(ua[good], va[good])
     med_norm = float(np.median(num[den > 0.005] / den[den > 0.005]))
     assert cu > 0.9 and cv > 0.9, (
-        f"geostrophic vs actual velocity correlation too low at ~200 m: "
+        f"geostrophic vs actual velocity correlation too low at ~350 m: "
         f"corr(u)={cu:.3f}, corr(v)={cv:.3f} (expect ~0.99)")
     assert med_norm < 0.25, (
         f"median normalized diff vs actual velocity too high: {med_norm:.3f} "
-        f"(expect ~0.03 at 200 m)")
-    return (f"vs ACTUAL model velocity at ~200 m: corr(u)={cu:.3f}, corr(v)={cv:.3f}, "
+        f"(expect ~0.03 at 350 m)")
+    return (f"vs ACTUAL model velocity at ~350 m: corr(u)={cu:.3f}, corr(v)={cv:.3f}, "
             f"median norm-diff={med_norm:.3f} over {n} pts (rules out shared bug)")
 
 
 TESTS = [
     ("Rung 1: match official geos_vel_compute", test_rung1_matches_official_helper, True),
-    ("Independent: geostrophic ≈ model velocity @200m", test_independent_corroboration_vs_model_velocity, True),
+    ("Independent: geostrophic ≈ model velocity @350m", test_independent_corroboration_vs_model_velocity, True),
     ("validation guards fire (neg+pos)", test_validate_negative_and_positive, False),
 ]
 

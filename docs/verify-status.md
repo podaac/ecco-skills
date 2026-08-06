@@ -46,7 +46,7 @@ SKILL.md; (ii) snapshot aliasing — documented; (iii) loose L3 volume-mean band
 | 2 tutorial number | N/A | Tutorial publishes figures/arrays, not a scalar. |
 | 3 conservation | N/A | Diagnostic velocity, not a budget. |
 | 4 physical sanity | ✅ | Surface geostrophic speed median ~0.029 m/s off-equator; WBC-box max ~0.32 m/s. |
-| 5 cross-check | ✅ | **Independent:** matches ACTUAL model UVEL/VVEL at ~200 m (corr 0.998; median norm-diff 0.032; 45,745 pts). Different variable + code path → rules out a bug shared with the reference. **Strongest correctness evidence.** |
+| 5 cross-check | ✅ | **Independent:** matches ACTUAL model UVEL/VVEL at ~350 m (corr 0.998; median norm-diff 0.032; 45,745 pts). Different variable + code path → rules out a bug shared with the reference. **Strongest correctness evidence.** |
 | 6 regression (teeth) | ✅ | `test_geostrophic.py` (Rung-1 match + independent-velocity check + 5 guards); teeth verified. |
 | 7 adversarial | ✅ | Independent disprove-pass (2026-07-25): zero confirmed errors. Its one fair critique (overstated Rung-1 claim) is fixed — added the Rung-5 independent test + corrected language. |
 

@@ -11,7 +11,7 @@ ECCO stores PHIHYDcR = p/rhoConst − gz, so ∂p/∂x = rhoConst·∂(PHIHYDcR)
 This implementation is a line-for-line match of the OFFICIAL tutorial helper
 `ecco_po_tutorials.geos_vel_compute`. That match proves *reproducibility* (we equal the
 reference); the stronger *correctness* evidence is the independent comparison to the
-model's actual UVEL/VVEL (corr ~0.998 at ~200 m — rules out a bug shared with the
+model's actual UVEL/VVEL (corr ~0.998 at ~350 m — rules out a bug shared with the
 reference). Both are automated in test_geostrophic.py. Velocities are returned in
 **model x/y** coordinates (NOT rotated to zonal/meridional) — what the reference
 produces and what a like-for-like balance check requires.
@@ -111,7 +111,7 @@ def validate(u_g, v_g, lat, log=_log):
     # Correctness evidence lives in the tests, not this runtime trail:
     log("    [i] Correctness: test_geostrophic.py checks (a) reproducibility vs official")
     log("        geos_vel_compute AND (b) independent match to actual model UVEL/VVEL "
-        "(~0.998 corr @200m).")
+        "(~0.998 corr @350m).")
     return ok
 
 
