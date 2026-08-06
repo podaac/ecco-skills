@@ -43,7 +43,7 @@ import sys
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "ecco-common"))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "ecco-common", "vendor"))
-from ecco_common import load_grid, load_field  # noqa: E402
+from ecco_common import load_grid, load_field, canon as _canon  # noqa: E402
 from jmd95 import densjmd95                     # vendored MITgcm JMD95 EOS  # noqa: E402
 
 DENSPRESS = "ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4"
@@ -66,13 +66,6 @@ SUMPARTS_RESID_MAX = 0.15     # m; median |full - (thermo+halo)| tolerance (line
 
 def _log(msg=""):
     print(msg, flush=True)
-
-
-def _canon(da):
-    """Transpose to canonical (time,k,tile,j,i) order — only the dims present. xgcm/xarray
-    ops can return arbitrary dim order; normalize before positional numpy indexing."""
-    order = [d for d in ("time", "k", "tile", "j", "i") if d in da.dims]
-    return da.transpose(*order)
 
 
 def reference_pressures(ds_grid):

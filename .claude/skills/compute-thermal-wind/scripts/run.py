@@ -40,13 +40,13 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
-from ecco_common import load_grid, load_field  # noqa: E402
+from ecco_common import (load_grid, load_field, canon as _canon,  # noqa: E402
+                         coriolis as _coriolis, grad_to_center)
 
 DENSPRESS = "ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4"
 OCEAN_VEL = "ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4"
 
 RHO_CONST = 1029.0                              # kg m-3, Boussinesq reference density
-OMEGA = 2.0 * 3.141592653589793 / 86164.0       # Earth rotation rate, sidereal day
 G = 9.81                                        # m s-2
 
 EQ_BAND_DEG = 5.0        # |lat| < this is masked (equatorial 1/f singularity)
@@ -61,22 +61,6 @@ def _log(msg=""):
     print(msg, flush=True)
 
 
-def _canon(da):
-    """Transpose to canonical (time,k,tile,j,i) order — only the dims present, in that
-    order. xgcm.interp_2d_vector returns dims in an arbitrary order (e.g. tile,j,i,time,k),
-    so we normalize before any positional numpy indexing (drC broadcast, k-slicing)."""
-    order = [d for d in ("time", "k", "tile", "j", "i") if d in da.dims]
-    return da.transpose(*order)
-
-
-def _coriolis(ds_grid):
-    """Coriolis parameter f = 2Ω·sin(lat) at cell centers (dims tile,j,i). Same formula
-    as compute-geostrophic-balance."""
-    import numpy as np
-    lat = ds_grid.YC
-    return 2.0 * OMEGA * np.sin((np.pi / 180.0) * lat), lat
-
-
 def predicted_shear(ds_grid, xgcm_grid, ds_dp, log=_log):
     """Thermal-wind RHS: the vertical shear predicted from the DENSITY field, in MODEL x/y.
 
@@ -89,17 +73,11 @@ def predicted_shear(ds_grid, xgcm_grid, ds_dp, log=_log):
     if hasattr(dens, "compute"):
         dens = dens.compute()
 
-    # horizontal density gradient on the C-grid, then interpolate the vector back to centers
-    d_rho_dx = xgcm_grid.diff(dens, axis="X", boundary="extend") / ds_grid.dxC
-    d_rho_dy = xgcm_grid.diff(dens, axis="Y", boundary="extend") / ds_grid.dyC
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        grads = xgcm_grid.interp_2d_vector({"X": d_rho_dx, "Y": d_rho_dy},
-                                           boundary="extend")
-    # interp_2d_vector returns dims in a non-canonical order; normalize before math.
-    d_rho_dx = _canon(grads["X"])        # at tracer centers now, dims time,k,tile,j,i
-    d_rho_dy = _canon(grads["Y"])
+    # horizontal density gradient on the C-grid, interpolated back to centers (shared helper:
+    # diff/dxC(dyC) + interp_2d_vector). Returns native dim order → canon before math.
+    d_rho_dx, d_rho_dy = grad_to_center(dens, ds_grid, xgcm_grid, boundary="extend")
+    d_rho_dx = _canon(d_rho_dx)          # at tracer centers now, dims time,k,tile,j,i
+    d_rho_dy = _canon(d_rho_dy)
 
     f, lat = _coriolis(ds_grid)
 

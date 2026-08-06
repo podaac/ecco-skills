@@ -60,7 +60,7 @@ Skills are usable directly in **Claude Code** (and any Agent-SDK harness): a use
 
 Skills do **not** pass live Python objects to each other (a skill isn't a running process that hands a variable to another). The composition mechanism is a **shared Python package, `ecco_common`**, that skills import:
 
-- `.claude/skills/ecco-common/ecco_common/` holds the reused building blocks — `load_grid()`, `load_field()`, plus `access` (CMR query + `.netrc` download) and `cache` (project-local `./data/ecco` cache). Written **once**, imported everywhere.
+- `.claude/skills/ecco-common/ecco_common/` holds the reused building blocks — `load_grid()`, `load_field()`, plus `access` (CMR query + `.netrc` download), `cache` (project-local `./data/ecco` cache), `plots` (headless LLC plotting), and `grid_ops` (Level-1 primitives `coriolis`/`canon`/`grad_to_center`, extracted 2026-08-05). Written **once**, imported everywhere.
 - A calculation skill's script imports these helpers and runs the whole calculation in **one venv-python process**: `ds_grid, grid = load_grid(); ds = load_field(...); result = compute(...)`. The in-memory xarray objects are ordinary local variables passed between function calls — no cross-process object transfer.
 - The **durable** thing shared between separate runs is the `.nc` cache on disk (so downloads aren't repeated); the **in-memory** objects only "flow" within a single script via imported functions.
 - Skills put `ecco_common` on `sys.path` with a one-line bootstrap (`sys.path.insert(0, ".../ecco-common")`) — no install step, works across sibling skill dirs.
@@ -506,7 +506,18 @@ Load the ECCO grid geometry. This is needed for virtually every calculation.
 
 ### Level 1: Grid Operations
 
-#### `spatial-difference`
+> **Status (2026-08-05): these Level-1 mechanics are `ecco_common` library functions, NOT
+> standalone skills** (same category as `load_grid`). Extraction pass done — see roadmap
+> Phase 2 for the caller audit. **Extracted into `ecco_common/grid_ops.py`:**
+> `spatial-difference`+`spatial-interpolation` (fused as `grad_to_center`, 2 callers),
+> `compute-coriolis` (as `coriolis`, 3 callers), plus `canon` (dim-order helper, 3 callers).
+> **NOT extracted (only 1 caller each — left inlined until a 2nd appears):**
+> `rotate-to-geographic` (curl only; and its bit match to `ecco_v4_py.vector_calc.
+> UEVNfromUXVY` makes adopting the official helper the likely move) and `vertical-difference`
+> (thermal-wind only). The prose below describes the operations; the implementation lives in
+> `grid_ops.py`.
+
+#### `spatial-difference` *(✅ extracted as part of `grad_to_center`)*
 Compute the spatial difference of a field along X or Y axis, properly accounting for the C-grid staggering.
 
 **Core operation:**
@@ -602,7 +613,7 @@ Define a 1/0 mask along an arbitrary line between two points (e.g., for computin
 
 ### Level 4: Physical Calculations
 
-#### `compute-coriolis`
+#### `compute-coriolis` *(✅ extracted as `ecco_common.grid_ops.coriolis`, 2026-08-05)*
 Compute the Coriolis parameter from latitude:
 ```python
 Omega = 2 * np.pi / 86164  # Earth's rotation rate (sidereal day)
@@ -849,7 +860,7 @@ adversarial pass pending. See `compute-curl/references/acceptance.md`.
 
 Uses: `load-field` (oceTAUX/oceTAUY + WVEL), `load-grid`. Level-1 primitives still inlined.
 
-#### `compute-ekman-transport`
+#### `compute-ekman-transport` — ⏸️ DEFERRED (2026-08-05, gated on Phil Q5)
 Wind-driven Ekman transport (depth-integrated volume transport per unit length, m^2 s-1) from wind stress. **Note the `rho`** — without it the units don't close:
 ```python
 M_x =  tau_y / (rho * f)
@@ -857,6 +868,17 @@ M_y = -tau_x / (rho * f)
 ```
 
 Compare with the model's integrated upper-ocean (ageostrophic) velocity.
+
+**Deferred pending Phil (Q5 in `questions-for-phil.md`).** Unlike every other Phil-free
+skill, Ekman transport has **no ECCO tutorial** (only 4 Intro-to-PO notebooks exist) — so no
+Rung-1 helper and no Rung-2 number. The formula above is trivial; the scientific value is
+entirely in the model comparison, and "compare with the model's upper-ocean velocity" is
+ambiguous (ageostrophic residual = total − geostrophic, vs raw upper-ocean velocity which the
+geostrophic flow dominates, vs another diagnostic — and over what "upper ocean" depth). We
+declined to guess and shipped nothing below the verification bar the other five cleared;
+Phil's Q5 answer unblocks it. The build is small (reuses curl's stress-on-faces handling and
+geostrophy's velocities). Input field: `oceTAUX`/`oceTAUY` (total stress, on U/V faces — see
+the curl grid-position note above), NOT `EXFtaux`/`EXFtauy`.
 
 ### Level 6: Visualization
 

@@ -47,13 +47,13 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
-from ecco_common import load_grid, load_field  # noqa: E402
+from ecco_common import (load_grid, load_field, OMEGA,  # noqa: E402
+                         canon as _canon, coriolis as _coriolis)
 
 STRESS = "ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4"
 OCEAN_VEL = "ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4"
 
 RHO_CONST = 1029.0                              # kg m-3, Boussinesq reference density
-OMEGA = 2.0 * 3.141592653589793 / 86164.0       # Earth rotation rate, sidereal day
 R_EARTH = 6.371e6                               # m, for the beta = df/dy term
 
 EQ_BAND_DEG = 5.0        # |lat| < this is masked (Ekman 1/f singularity)
@@ -65,22 +65,6 @@ WE_ABS_MAX = 1.0e-4      # m/s; Ekman pumping is O(1e-6) m/s (~10s of m/yr); gen
 
 def _log(msg=""):
     print(msg, flush=True)
-
-
-def _canon(da):
-    """Transpose to canonical (time,k,tile,j,i) order — only the dims present, in that
-    order. xgcm.interp_2d_vector returns dims in an arbitrary order, so we normalize
-    before any positional numpy indexing. (2-D surface fields simply have no k.)"""
-    order = [d for d in ("time", "k", "tile", "j", "i") if d in da.dims]
-    return da.transpose(*order)
-
-
-def _coriolis(ds_grid):
-    """Coriolis f = 2Ω·sin(lat) at cell centers (dims tile,j,i). Same formula as the
-    geostrophy and thermal-wind skills. Returns (f, lat)."""
-    import numpy as np
-    lat = ds_grid.YC
-    return 2.0 * OMEGA * np.sin((np.pi / 180.0) * lat), lat
 
 
 def _beta(ds_grid):

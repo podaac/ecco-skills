@@ -19,6 +19,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 SUITES = [
     ("ecco_common (loader/cache/access)",
      os.path.join(_HERE, "ecco-common", "tests", "test_ecco_common.py")),
+    ("ecco_common.grid_ops (Level-1 primitives)",
+     os.path.join(_HERE, "ecco-common", "tests", "test_grid_ops.py")),
     ("compute-ocean-heat-content (validation guards)",
      os.path.join(_HERE, "compute-ocean-heat-content", "scripts", "test_validation.py")),
     ("compute-geostrophic-balance (Rung-1 match + guards)",

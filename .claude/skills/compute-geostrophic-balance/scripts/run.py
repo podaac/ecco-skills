@@ -24,12 +24,11 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
-from ecco_common import load_grid, load_field  # noqa: E402
+from ecco_common import load_grid, load_field, coriolis, grad_to_center  # noqa: E402
 
 DENSPRESS = "ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4"
 
 RHO_CONST = 1029.0            # kg m-3, Boussinesq reference density (ECCO/MITgcm)
-OMEGA = 2.0 * 3.141592653589793 / 86164.0   # Earth rotation rate, sidereal day
 G = 9.81
 
 # Physical-sanity bounds (Layer 3), degC/velocity.
@@ -51,21 +50,14 @@ def compute_geostrophic(ds_grid, xgcm_grid, ds_dp, log=_log):
     dens = RHO_CONST + densanom
     pressanom = ds_dp.PHIHYDcR
 
-    # ∂p/∂x, ∂p/∂y  (note the rhoConst factor: PHIHYDcR = p/rhoConst − gz)
-    d_press_dx = (xgcm_grid.diff(RHO_CONST * pressanom, axis="X", boundary="extend")
-                  ) / ds_grid.dxC
-    d_press_dy = (xgcm_grid.diff(RHO_CONST * pressanom, axis="Y", boundary="extend")
-                  ) / ds_grid.dyC
-
-    # interpolate the (vector) gradient to cell centers
-    grads = xgcm_grid.interp_2d_vector({"X": d_press_dx, "Y": d_press_dy},
-                                       boundary="extend")
-    dp_dx = grads["X"]
-    dp_dy = grads["Y"]
+    # ∂p/∂x, ∂p/∂y at cell centers (note the rhoConst factor: PHIHYDcR = p/rhoConst − gz).
+    # grad_to_center does the vetted C-grid sequence: diff/dxC(dyC) + interp_2d_vector, and
+    # returns NATIVE dim order (matching the reference geos_vel_compute — no canon here).
+    dp_dx, dp_dy = grad_to_center(RHO_CONST * pressanom, ds_grid, xgcm_grid,
+                                  boundary="extend")
 
     # Coriolis parameter from cell-center latitude
-    lat = ds_grid.YC
-    f = 2.0 * OMEGA * np.sin((np.pi / 180.0) * lat)
+    f, lat = coriolis(ds_grid)
 
     v_g = dp_dx / (f * dens)
     u_g = -dp_dy / (f * dens)

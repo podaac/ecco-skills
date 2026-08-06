@@ -15,7 +15,9 @@ Typical use inside a skill script:
 """
 
 from .loaders import load_grid, load_field, GEOMETRY_SHORT_NAME
-from . import access, cache, loaders, plots
+from .grid_ops import OMEGA, coriolis, canon, grad_to_center
+from . import access, cache, loaders, plots, grid_ops
 
 __all__ = ["load_grid", "load_field", "GEOMETRY_SHORT_NAME",
-           "access", "cache", "loaders", "plots"]
+           "OMEGA", "coriolis", "canon", "grad_to_center",
+           "access", "cache", "loaders", "plots", "grid_ops"]

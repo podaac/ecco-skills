@@ -97,15 +97,47 @@ Specific near-term ones where your steer would help:
 
 ---
 
+## 5. Ekman transport (Q6) — which model comparison do you want?
+*Unblocks: the `compute-ekman-transport` skill.*
+
+Ekman transport `M = (τ_y/ρf, −τ_x/ρf)` is the wind-driven **ageostrophic** volume transport
+(m² s⁻¹). The formula is trivial and its units/magnitude we can check ourselves — but unlike
+our other skills, **there is no ECCO tutorial for it**, so there's no reference number or
+helper to verify against. The whole scientific value is in the comparison to the model, and
+we don't want to guess which comparison you mean by "compare with the model's upper-ocean
+velocity":
+
+- **(a)** Compare Ekman transport to the model's **ageostrophic residual** — i.e. (total
+  upper-ocean transport − geostrophic transport)? This is the physically clean comparison
+  (Ekman *is* the ageostrophic part), and we already compute geostrophic velocity.
+- **(b)** Compare to the **raw** depth-integrated upper-ocean velocity? Simpler, but the
+  geostrophic flow dominates it, so agreement will be weak/messy.
+- **(c)** Something else (e.g. Ekman transport vs a known zonal-integral benchmark, or the
+  classic Ekman-layer spiral)?
+
+Also: over what depth should the "upper ocean" integral run — a fixed Ekman-layer depth, a
+mixed-layer depth, or a fixed level? **We've deliberately deferred building this skill until
+you weigh in**, since its correctness bar depends entirely on your answer here.
+
+---
+
 ## What is NOT blocked (so you know the state of play)
 
-Already built and independently verified — **no input needed**:
+Already built and independently verified — **no input needed** (the "Phil-free" set is now
+complete):
 - **Ocean heat content** (volume-weighted; reproduces tutorial ocean-volume/area, warming
   trend right sign & magnitude).
 - **Geostrophic velocity** (matches the official tutorial helper *and* the model's actual
   velocities).
+- **Thermal wind** (shear + velocity reconstruction; matches ∂/∂z of geostrophy and the
+  model's velocity along 26°N).
+- **Wind-stress curl + Ekman pumping** (matches the official rotation helper; Ekman pumping
+  vs the model's actual vertical velocity, corr 0.74).
+- **Steric height** (thermosteric/halosteric split; matches SSH spatially, corr 0.92).
 - The data/environment plumbing (download, caching, grid handling) — all machine-tested.
 
-We can keep building anything that has a tutorial helper or physical cross-check to verify
-against while these questions are open. The four above are the gates for budgets,
-transports, the decomposition, and observational benchmarking.
+Each of the last three still needs a final adversarial-review pass before we call it "done",
+but none needs *your* input. What remains gated on you: budgets (Q3), the flux decomposition
+grouping (Q2), transport/observational benchmarks (Q1), and the Ekman comparison (Q5). Note
+Q6/Ekman transport is a small skill we've **deferred purely for lack of a comparison target**
+— your steer on Q5 unblocks it immediately.
