@@ -70,13 +70,13 @@ def _compute():
     ds_ts = load_field(TEMPSALT, months=["2000-01"], log=_q)
     ds_ssh = load_field(SSH, months=["2000-01"], log=_q)
     h_gm, thermo, halo, um = run.compute_all(ds_grid, ds_dp, ds_ts, ds_ssh)
-    return ds_grid, ds_ssh, h_gm, thermo, halo, um
+    return ds_grid, ds_ssh, ds_ts, h_gm, thermo, halo, um
 
 
 def test_sum_of_parts():
     """(1) thermosteric + halosteric ≈ full steric anomaly (tutorial's decomposition check)."""
     import numpy as np
-    _, _, h_gm, thermo, halo, um = _compute()
+    _, _, _, h_gm, thermo, halo, um = _compute()
     umb = um.astype(bool).values
     h = np.squeeze(h_gm.values)
     p = np.squeeze((thermo + halo).values)
@@ -93,7 +93,7 @@ def test_sum_of_parts():
 def test_steric_vs_ssh():
     """(2) steric height explains most of the spatial SSH structure (independent check)."""
     import numpy as np
-    ds_grid, ds_ssh, h_gm, _, _, um = _compute()
+    ds_grid, ds_ssh, _, h_gm, _, _, um = _compute()
     # SSH, global-mean-removed over the SAME valid region
     w = um * ds_grid.rA
     ssh = ds_ssh.SSH
@@ -120,7 +120,7 @@ def test_zstar_weighting_is_load_bearing():
     """TEETH: flipping the sign of the specific-volume anomaly must break steric-vs-SSH
     (steric would anti-correlate with SSH). Proves the sign/weighting is load-bearing."""
     import numpy as np
-    ds_grid, ds_ssh, h_gm, _, _, um = _compute()
+    ds_grid, ds_ssh, _, h_gm, _, _, um = _compute()
     w = um * ds_grid.rA
     ssh = ds_ssh.SSH
     ssh_gm = ssh - (float((w * ssh).sum()) / float(w.sum()))
@@ -132,6 +132,28 @@ def test_zstar_weighting_is_load_bearing():
     assert corr_good > 0.85 and corr_flipped < -0.85, (
         f"sign is not load-bearing: good corr {corr_good:.3f}, flipped {corr_flipped:.3f}")
     return f"specvol-anomaly sign is load-bearing: corr {corr_good:.2f} → {corr_flipped:.2f} when flipped"
+
+
+def test_thermo_halo_labels_not_swapped():
+    """(eval-6 caveat B) Guard against a thermo/halo LABEL SWAP — which sum-of-parts CANNOT
+    catch (thermo+halo is identical either way). Physically, the THERMOsteric contribution
+    is driven by temperature, so it must correlate strongly with SST; the halosteric one
+    must not. A swap flips these. Measured: corr(thermo,SST)=0.926 vs corr(halo,SST)=−0.24."""
+    import numpy as np
+    ds_grid, _, ds_ts, _, thermo, halo, um = _compute()
+    umb = um.astype(bool).values
+    sst = np.squeeze(ds_ts.THETA.isel(k=0).values)
+    th = np.squeeze(thermo.values); ha = np.squeeze(halo.values)
+    g = umb & np.isfinite(th) & np.isfinite(ha) & np.isfinite(sst)
+    c_th = float(np.corrcoef(th[g], sst[g])[0, 1])
+    c_ha = float(np.corrcoef(ha[g], sst[g])[0, 1])
+    # Thermosteric tracks SST (0.926); halosteric does not (−0.24). 0.5 sits well between,
+    # so a label swap (which would make c_th ≈ −0.24) fails decisively.
+    assert c_th > 0.5, (f"thermosteric should track SST (corr {c_th:.3f} ≤ 0.5) — labels may "
+                        f"be SWAPPED with halosteric (halo-vs-SST corr {c_ha:.3f})")
+    assert c_th > c_ha, "thermosteric must track SST more than halosteric does"
+    return (f"thermo/halo labels correct: corr(thermosteric,SST)={c_th:.3f} ≫ "
+            f"corr(halosteric,SST)={c_ha:.3f}")
 
 
 # --------------------------------------------------------------------------
@@ -188,6 +210,7 @@ TESTS = [
     ("EOS check value (JMD95)", test_eos_check_value, False),
     ("Sum-of-parts: thermo+halo ≈ full", test_sum_of_parts, True),
     ("Steric ≈ SSH (independent)", test_steric_vs_ssh, True),
+    ("Thermo/halo labels not swapped (vs SST)", test_thermo_halo_labels_not_swapped, True),
     ("TEETH: specvol sign is load-bearing", test_zstar_weighting_is_load_bearing, True),
     ("validation guards fire (neg+pos)", test_validate_negative_and_positive, False),
 ]

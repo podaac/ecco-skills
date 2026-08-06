@@ -86,7 +86,7 @@ recomputes geostrophic velocity **inline** from `PHIHYDcR` for the identity chec
 | 4 physical sanity | ✅ | Off-equator |∂u/∂z|,|∂v/∂z| ~1e-4 s⁻¹ (max ≪ 1e-2); reconstructed speed max ~0.4 m/s. Runtime L3 guard. |
 | 5 cross-check | ✅ | **(1) internal identity:** shear ≈ ∂/∂z of geostrophic velocity, corr **0.999**. **(2) independent:** predicted shear vs the model's *actual* velocity shear, corr 0.64/0.85 (different variable/path → rules out a bug shared with the pressure field). |
 | 6 regression (teeth) | ✅ | `test_thermal_wind.py`: 3 data cross-checks + 6 offline guards. Teeth verified — a sign flip fails checks 1–3; dropping `g` fails check 3 (magnitude). |
-| 7 adversarial | ⚠️ pending | A standing disprove-pass is the final gate before this is fully "done" — see acceptance.md. |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval4.md`): could not disprove; zero confirmed errors; all 5 numbers reproduced. One caveat fixed (reconstruction threshold 0.6→0.35). |
 
 ## Limits / honest caveats
 

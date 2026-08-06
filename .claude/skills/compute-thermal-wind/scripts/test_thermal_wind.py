@@ -154,10 +154,15 @@ def test_reconstruction_vs_actual_velocity_26N():
     assert n > 200000, f"too few points: {n}"
     med = float(np.median(num[g] / den[g]))
     # Tutorial regime: reconstruction tracks the actual flow to within a normalized diff
-    # that's small but above its 0.1 reference line at these depths. Guard against gross
-    # failure (a sign flip or bad z0 integration would send this ≳1).
-    assert med < 0.6, (f"reconstruction vs actual velocity normalized diff too high: "
-                       f"median={med:.3f} (expect ~0.2–0.4 in 100–1000 m)")
+    # that's small but above its 0.1 reference line at these depths (measured ~0.231).
+    # Threshold TIGHTENED 0.6 → 0.35 (2026-08-06, adversarial-review caveat C2): the old
+    # 0.6 let a subtle magnitude bug slip through — a 1.5× shear error lands at 0.498, a
+    # 0.5× at 0.568, both < 0.6. Measured error landings: correct 0.231, 1.5× 0.498,
+    # 0.5× 0.568, 2× 0.917 — so 0.35 cleanly fails ALL of them while leaving margin above
+    # the true 0.231. (A sign flip or bad z0 integration sends it ≳1; a dropped g → 0.911.)
+    assert med < 0.35, (f"reconstruction vs actual velocity normalized diff too high: "
+                        f"median={med:.3f} (expect ~0.23 in 100–1000 m; ≥0.35 signals a "
+                        f"magnitude/sign bug — see the sensitivity table in the comment)")
     return (f"reconstruction vs ACTUAL velocity @100–1000 m off-eq: median norm-diff="
             f"{med:.3f} over {n} pts (tutorial's deliverable)")
 

@@ -17,7 +17,7 @@ velocity). The tutorial spreads thermal wind across notebook cells rather than a
 So Rung 1 (official-helper match) **cannot apply**; correctness rests on the three
 cross-checks below, per verify.md's guidance for a novel combination with no helper.
 
-## V&V status: ⚠️ evidence-backed; Rung-7 adversarial pass PENDING before "done"
+## V&V status: ✅ DONE — all applicable rungs cleared (Rung-7 adversarial pass 2026-08-06)
 
 | Rung | Status | Evidence |
 |------|--------|----------|
@@ -26,8 +26,8 @@ cross-checks below, per verify.md's guidance for a novel combination with no hel
 | 3 conservation | N/A | Diagnostic shear, not a budget. |
 | 4 physical sanity | ✅ | Off-equator |∂v/∂z| median ~2.5e-5 s⁻¹ @k=10, max ~4e-3 s⁻¹ (≪ 1e-2 cap); reconstructed speed max ~0.40 m/s. |
 | 5 internal cross-check | ✅ | **(1) analytic identity:** thermal-wind shear vs ∂/∂z of the geostrophic velocity from the same pressure field — **corr(du/dz)=0.9992, corr(dv/dz)=0.9991** over 1,397,116 points. Confirms signs, the g/(fρ) factor, and the drC vertical derivative. **(2) independent:** predicted shear (from density) vs the model's ACTUAL velocity shear (∂/∂z of UVEL/VVEL) — **corr(du/dz)=0.635, corr(dv/dz)=0.852** over 1,406,931 points. Moderate by nature (real ageostrophic flow); a different variable + code path, so it rules out a bug confined to the pressure path. |
-| 6 regression (teeth) | ✅ | `scripts/test_thermal_wind.py`: 3 data cross-checks (SKIP if uncached) + 6 offline synthetic guards. Teeth verified (below). |
-| 7 adversarial review | ⚠️ PENDING | A dedicated independent disprove-pass is the final gate before this is marked fully DONE. Not yet run. |
+| 6 regression (teeth) | ✅ | `scripts/test_thermal_wind.py`: 3 data cross-checks (SKIP if uncached) + 6 offline synthetic guards. Teeth verified (below). Reconstruction threshold tightened 0.6→0.35 after the adversarial pass (see below). |
+| 7 adversarial review | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval4.md`): **could not disprove — zero confirmed errors**; all 5 acceptance numbers reproduced exactly. One actionable caveat (loose reconstruction threshold) fixed. Four physics attacks (signs, g/(fρ), drC/k-negation, z0 reconstruction — the last confirmed via `np.allclose` vs the tutorial) all held. |
 
 ## Teeth verification (2026-08-04)
 
@@ -40,6 +40,12 @@ Deliberately broke the physics and confirmed the suite catches it:
   (median 0.911 vs 0.231) because it depends on magnitude. This is why the reconstruction
   check is kept: it's the guard that pins down the constant factor, not just the pattern.
 - Restored code: **4/4 pass.**
+
+**Threshold tightened after eval-4 (2026-08-06):** the adversarial review noted the
+reconstruction gate (`median < 0.6`) was loose vs the true 0.231. Measured the sensitivity
+to a magnitude bug: correct **0.231**, 1.5× shear error **0.498**, 0.5× **0.568**, 2×
+**0.917**. The old 0.6 let the 1.5× and 0.5× cases pass; **tightened to 0.35**, which fails
+all three while keeping margin above 0.231. Correct code still passes (0.231 < 0.35).
 
 ## Results (Jan 2000)
 
@@ -56,7 +62,10 @@ Deliberately broke the physics and confirmed the suite catches it:
 - Correlation checks are scale-invariant (magnitude guarded by the reconstruction check).
 - Equatorial band |lat|<5° excluded (f→0).
 
-## TODO before marking fully ✅ DONE
-- Run the Rung-7 adversarial disprove-pass (attack: sign conventions, the g/(fρ) factor,
-  drC-vs-drF, the k-index negation, the z0 up/down integration direction, dim-order in the
-  interp→numpy handoff) and record the result here.
+## Rung-7 adversarial pass — DONE 2026-08-06
+Independent Sonnet disprove-pass (full record: `docs/eval4.md`): **could not disprove —
+zero confirmed errors**, all 5 acceptance numbers reproduced exactly. Attacks on signs, the
+g/(fρ) factor, drC-vs-drF + k-negation, the z0 up/down integration (verified via
+`np.allclose` against the tutorial), and the dim-order/canon handoff all held. One
+actionable caveat — a loose reconstruction threshold — was fixed (0.6→0.35, above). Five
+lesser caveats reviewed and documented as non-errors. **Skill is now ✅ DONE.**

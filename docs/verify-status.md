@@ -55,7 +55,7 @@ strengthened the evidence (independent velocity check added). Documented limitat
 (not errors): model-axis output, coastal NaN-bleed, tile-seam `extend` — all inherited
 from the official reference. Record: `compute-geostrophic-balance/references/acceptance.md`.
 
-### `compute-thermal-wind` (Recipe 3) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+### `compute-thermal-wind` (Recipe 3) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
 | Rung | Status | Evidence / gap |
 |------|--------|----------------|
@@ -64,15 +64,14 @@ from the official reference. Record: `compute-geostrophic-balance/references/acc
 | 3 conservation | N/A | Diagnostic shear, not a budget. |
 | 4 physical sanity | ✅ | Off-eq |∂v/∂z| ~2.5e-5 s⁻¹ (max ≪ 1e-2); reconstructed speed max ~0.40 m/s. Runtime L3 guard. |
 | 5 cross-check | ✅ | **(1) identity:** shear ≈ ∂/∂z of geostrophic velocity, corr **0.999** (1.40M pts). **(2) independent:** predicted vs ACTUAL velocity shear, corr 0.64/0.85 (1.41M pts) — different variable/path. |
-| 6 regression (teeth) | ✅ | `test_thermal_wind.py`: 3 data cross-checks + 6 offline guards. Teeth verified: sign flip fails checks 1–3; dropping `g` fails check 3 (magnitude). |
-| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — the final gate before "done". |
+| 6 regression (teeth) | ✅ | `test_thermal_wind.py`: 3 data cross-checks + 6 offline guards. Teeth verified: sign flip fails checks 1–3; dropping `g` fails check 3. Reconstruction threshold tightened 0.6→0.35 after eval-4 (caught a 1.5× magnitude bug that slipped 0.6). |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval4.md`): could not disprove; zero confirmed errors; all 5 acceptance numbers reproduced. |
 
-**Status: NOT yet DONE** — all rungs cleared **except** the Rung-7 adversarial pass, which
-is required by verify.md before a science skill is marked ✅. Report as ⚠️ (evidence-backed,
-independently cross-checked, but not adversarially reviewed). Record:
-`compute-thermal-wind/references/acceptance.md`.
+**Status: ✅ DONE** — all applicable rungs cleared, incl. a clean Rung-7 adversarial pass
+(one loose-threshold caveat found and fixed). Record:
+`compute-thermal-wind/references/acceptance.md`; review log: `docs/eval4.md`.
 
-### `compute-curl` (Recipe 6 / Q5) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+### `compute-curl` (Recipe 6 / Q5) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
 | Rung | Status | Evidence / gap |
 |------|--------|----------------|
@@ -82,13 +81,14 @@ independently cross-checked, but not adversarially reviewed). Record:
 | 4 physical sanity | ✅ | Curl ~1e-7 Pa/m; correct sign (N. Pacific subtropical gyre negative → downwelling); w_E O(1e-6 m/s). Equator masked. |
 | 5 cross-check | ✅ | **(a)** rotation == `UEVNfromUXVY` (bit-identical). **(b) independent physical:** Ekman w_E vs actual **WVEL** @~30 m: **corr 0.738, sign-agree 0.89** (48,383 pts). |
 | 6 regression (teeth) | ✅ | `test_curl.py`: rotation + Ekman-vs-WVEL + a teeth test (2nd rotation is load-bearing, ~30% shift) + 6 offline guards. Sign flip → WVEL corr −0.56 (fails). |
-| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — final gate before "done". |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval5.md`): could not disprove; zero confirmed errors; both historical rotation bugs confirmed blocked; all numbers reproduced. |
 
-**Status: NOT yet DONE** — all applicable rungs cleared except Rung-7. ⚠️ evidence-backed.
-Build fixed two design-doc errors (oceTAUX/Y are on faces not tracer points; the two
-rotations use the same formula). Record: `compute-curl/references/acceptance.md`.
+**Status: ✅ DONE** — all applicable rungs cleared, incl. a clean Rung-7 adversarial pass
+(one loose-teeth-threshold caveat found and fixed, 0.05→0.20). Build also fixed two
+design-doc errors (oceTAUX/Y are on faces not tracer points; the two rotations use the same
+formula). Record: `compute-curl/references/acceptance.md`; review log: `docs/eval5.md`.
 
-### `compute-steric-height` (Recipe 3-steric) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+### `compute-steric-height` (Recipe 3-steric) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
 | Rung | Status | Evidence / gap |
 |------|--------|----------------|
@@ -97,12 +97,14 @@ rotations use the same formula). Record: `compute-curl/references/acceptance.md`
 | 3 conservation | N/A | Diagnostic, not a budget. |
 | 4 physical sanity | ✅ | Global-mean-removed anomaly range ≈ [-3.2, 2.2] m; high in warm subtropics, low in Southern Ocean (matches SSH). Land + too-shallow (<2000 dbar) masked. |
 | 5 cross-check | ✅ | **(a) sum-of-parts:** thermo+halo ≈ full, median residual **0.005 m**, corr **0.9998**. **(b) INDEPENDENT:** steric ≈ SSH, corr **0.921** (different collection; residual = non-steric mass part). |
-| 6 regression (teeth) | ✅ | `test_steric.py`: EOS check-value + sum-of-parts + steric-vs-SSH + teeth (specvol sign flip → steric-vs-SSH corr −0.92) + offline guards. |
-| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — final gate before "done". |
+| 6 regression (teeth) | ✅ | `test_steric.py` (6 tests): EOS check-value + sum-of-parts + steric-vs-SSH + **thermo/halo label guard (vs SST)** + specvol-sign teeth + offline guards. |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval6.md`): could not disprove; zero confirmed errors; all numbers reproduced. |
 
-**Status: NOT yet DONE** — all applicable rungs cleared except Rung-7. ⚠️ evidence-backed.
-Vendored the MITgcm JMD95 EOS (no EOS was available); fixed a de-meaning/masking bug during
-the build. Record: `compute-steric-height/references/acceptance.md`.
+**Status: ✅ DONE** — all applicable rungs cleared, incl. a clean Rung-7 adversarial pass
+(one caveat found and fixed: added a thermo/halo label-swap guard, which sum-of-parts
+couldn't catch). Vendored the MITgcm JMD95 EOS (no EOS was available); a de-meaning/masking
+bug was fixed during the build. Record: `compute-steric-height/references/acceptance.md`;
+review log: `docs/eval6.md`.
 
 ---
 
@@ -142,8 +144,12 @@ cached-file checksum *verification*; index locking for concurrent runs.
 
 Every new/changed science skill gets an **independent adversarial review** before it's
 called done — an external AI instance instructed to *disprove* it against the tutorials
-and installed helpers. Prior rounds logged in `docs/eval-issues.md`, `docs/eval2.md`,
-`docs/eval3.md`. **Keep this loop running** — it has been the highest-yield check.
+and installed helpers. Prior rounds logged in `docs/eval1.md`, `docs/eval2.md`,
+`docs/eval3.md`, and — all 2026-08-06 — `docs/eval4.md` (thermal wind), `docs/eval5.md`
+(curl), `docs/eval6.md` (steric). **Keep this loop running** — it has been the highest-yield
+check. **All five science skills have now passed Rung-7** (none had a confirmed error; each
+of evals 4–6 found exactly one test-hardening improvement, all fixed). Next skills to build
+get the same pass before "done".
 
 ---
 

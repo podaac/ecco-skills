@@ -123,8 +123,8 @@ you weigh in**, since its correctness bar depends entirely on your answer here.
 
 ## What is NOT blocked (so you know the state of play)
 
-Already built and independently verified — **no input needed** (the "Phil-free" set is now
-complete):
+Built, independently verified, **and each independently review-checked for errors** —
+**no input needed**. This "Phil-free" set is now complete:
 - **Ocean heat content** (volume-weighted; reproduces tutorial ocean-volume/area, warming
   trend right sign & magnitude).
 - **Geostrophic velocity** (matches the official tutorial helper *and* the model's actual
@@ -136,8 +136,9 @@ complete):
 - **Steric height** (thermosteric/halosteric split; matches SSH spatially, corr 0.92).
 - The data/environment plumbing (download, caching, grid handling) — all machine-tested.
 
-Each of the last three still needs a final adversarial-review pass before we call it "done",
-but none needs *your* input. What remains gated on you: budgets (Q3), the flux decomposition
-grouping (Q2), transport/observational benchmarks (Q1), and the Ekman comparison (Q5). Note
-Q6/Ekman transport is a small skill we've **deferred purely for lack of a comparison target**
-— your steer on Q5 unblocks it immediately.
+All five calculations have now been through an independent "try-to-disprove-it" review, and
+none turned up a science error — so we're confident in them without needing your time. What
+remains gated on you: transport/observational benchmarks (Q1), the flux-decomposition
+grouping (Q2), budgets (Q3), and the Ekman comparison (Q5). Q5/Ekman transport in particular
+is a small skill we've **deferred purely for lack of a comparison target** — your steer there
+unblocks it immediately.

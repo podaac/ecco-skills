@@ -5,8 +5,8 @@ description: Compute steric height anomaly from ECCO density — the part of sea
 
 # compute-steric-height (Recipe 3-steric)
 
-> **🔬 Verification status (per `docs/verify.md`): ✅ built, evidence-backed; Rung-7 adversarial
-> pass PENDING.** No official steric helper (Rung 1 N/A), but the vendored JMD95 EOS
+> **🔬 Verification status (per `docs/verify.md`): ✅ DONE** (Rung-7 adversarial pass clean,
+> 2026-08-06 — `docs/eval6.md`). No official steric helper (Rung 1 N/A), but the vendored JMD95 EOS
 > reproduces its **published check value** exactly (1041.83267). Correctness rests on:
 > **sum-of-parts** — thermosteric + halosteric reconstruct the full steric field (median
 > residual **0.005 m**, corr **0.9998**); and **steric ≈ SSH** — steric height explains most
@@ -79,7 +79,7 @@ ds_ssh = load_field("ECCO_L4_SSH_LLC0090GRID_MONTHLY_V4R4",             months=[
 | 4 physical sanity | ✅ | Steric anomaly (global-mean-removed) range ≈ [-3.2, 2.2] m; high in the warm subtropics/tropical Pacific, low in the Southern Ocean — matches SSH. Land + too-shallow masked. |
 | 5 cross-check | ✅ | **(a) sum-of-parts:** thermo+halo ≈ full steric (median residual 0.005 m, corr 0.9998). **(b) INDEPENDENT:** steric ≈ SSH spatially, corr **0.921** (different collection/variable → the non-steric residual is the mass/barotropic part). |
 | 6 regression (teeth) | ✅ | `test_steric.py`: EOS check-value + sum-of-parts + steric-vs-SSH + a teeth test (specvol sign is load-bearing: corr 0.92 → −0.92 when flipped) + offline guards. |
-| 7 adversarial | ⚠️ pending | Standing disprove-pass is the final gate before fully "done" — see acceptance.md. |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval6.md`): could not disprove; zero confirmed errors; all numbers reproduced. One caveat fixed (added a thermo/halo label-swap guard vs SST). |
 
 ## Limits / honest caveats
 

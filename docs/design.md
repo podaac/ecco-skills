@@ -665,7 +665,9 @@ reproduces ∂/∂z of the geostrophic velocity from the same pressure field to 
 vs the model's *actual* velocity shear (corr 0.64/0.85 — independent variable/path);
 **(3)** velocity reconstructed from z0=-3000 m vs the model's *actual* velocity along 26°N
 (normalized diff ~0.23, 100–1000 m — the tutorial's deliverable). Teeth-verified. See
-`compute-thermal-wind/references/acceptance.md`. *(Rung-7 adversarial pass still pending.)*
+`compute-thermal-wind/references/acceptance.md`. *(✅ Rung-7 adversarial pass clean
+2026-08-06 — `docs/eval4.md`; skill is DONE. One caveat fixed: reconstruction test
+threshold tightened 0.6→0.35.)*
 
 Uses: `load-field` (RHOAnoma + UVEL/VVEL for the check), `load-grid`. Level-1 primitives
 still inlined (extraction deferred until a 3rd caller — see roadmap).
@@ -718,7 +720,9 @@ global mean removed.
 (thermo+halo ≈ full) median residual 0.005 m, corr 0.9998. **Steric ≈ SSH** (independent, vs
 a different collection): corr 0.921 (steric explains ~85% of SSH variance; the rest is the
 non-steric/mass component). Teeth-verified (specvol sign flip → steric-vs-SSH corr −0.92).
-⚠️ Rung-7 adversarial pass pending. See `compute-steric-height/references/acceptance.md`.
+✅ Rung-7 adversarial pass clean 2026-08-06 (`docs/eval6.md`; one caveat fixed — added a
+thermo/halo label-swap guard vs SST). Skill is DONE. See
+`compute-steric-height/references/acceptance.md`.
 
 Uses: `load-field` (RHOAnoma, THETA, SALT, SSH+ETAN), `load-grid`, vendored `jmd95`.
 Level-1 primitives still inlined.
@@ -855,8 +859,10 @@ for a velocity curl (relative vorticity).
 
 **Verification:** no official curl helper exists (Rung 1 N/A); the CS/SN rotation core is
 bit-identical to `ecco_v4_py.vector_calc.UEVNfromUXVY`, and Ekman pumping `w_E` matches the
-model's actual `WVEL` at ~30 m to corr 0.74 / sign-agreement 0.89 (Rung 5). ⚠️ Rung-7
-adversarial pass pending. See `compute-curl/references/acceptance.md`.
+model's actual `WVEL` at ~30 m to corr 0.74 / sign-agreement 0.89 (Rung 5). ✅ Rung-7
+adversarial pass clean 2026-08-06 (`docs/eval5.md`; both historical rotation bugs confirmed
+blocked; one caveat fixed — teeth threshold 0.05→0.20). Skill is DONE. See
+`compute-curl/references/acceptance.md`.
 
 Uses: `load-field` (oceTAUX/oceTAUY + WVEL), `load-grid`. Level-1 primitives still inlined.
 

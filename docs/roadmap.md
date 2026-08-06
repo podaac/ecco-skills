@@ -155,10 +155,11 @@ none of the three). New offline test: `ecco-common/tests/test_grid_ops.py`.
 **Recipe 2 status:** `compute-geostrophic-balance` is built and **Rung-1 verified** — its
 `u_g`/`v_g` match the official `ecco_po_tutorials.geos_vel_compute` to <1e-9 m/s over 2.24M
 points (first skill to satisfy Rung 1). Computed in model coordinates; equator masked.
-⚠️ Rung-7 adversarial pass pending before "done". Note we built the calculation directly
-against the official helper rather than first extracting the separate Level-1 primitives
-(`spatial-difference`, etc.) — those can be refactored out later; the vetted result came
-first. Plotting skills and the geostrophy-vs-model-velocity *comparison* remain to build.
+✅ Rung-7 adversarial pass cleared (2026-07-25) — geostrophy is DONE. Note we built the
+calculation directly against the official helper rather than first extracting the separate
+Level-1 primitives (`spatial-difference`, etc.) — those were later refactored into
+`ecco_common/grid_ops.py` (2026-08-05). The geostrophy-vs-model-velocity *comparison* skill
+remains to build.
 
 ---
 
@@ -184,21 +185,18 @@ science shouldn't be finalized until Phil weighs in.
 
 | Skill | Level | Status |
 |---|---|---|
-| **`compute-curl`** + **Recipe 6 (Ekman pumping)** | 4–5 | ✅ BUILT 2026-08-05 (curl + Ekman pumping; ⚠️ Rung-7 adversarial pass pending) |
-| **`compute-thermal-wind` + `reconstruct-velocity-from-thermal-wind`** (Recipe 3) | 4 | ✅ BUILT 2026-08-04 (one skill; ⚠️ Rung-7 adversarial pass pending) |
-| **`compute-steric-height`** (Recipe 3-steric) | 4 | ✅ BUILT 2026-08-05 (steric + thermo/halo split; ⚠️ Rung-7 adversarial pass pending) |
+| **`compute-curl`** + **Recipe 6 (Ekman pumping)** | 4–5 | ✅ DONE 2026-08-06 (curl + Ekman pumping; Rung-7 adversarial pass clean — `docs/eval5.md`; both historical rotation bugs confirmed blocked) |
+| **`compute-thermal-wind` + `reconstruct-velocity-from-thermal-wind`** (Recipe 3) | 4 | ✅ DONE 2026-08-06 (one skill; Rung-7 adversarial pass clean — `docs/eval4.md`) |
+| **`compute-steric-height`** (Recipe 3-steric) | 4 | ✅ DONE 2026-08-06 (steric + thermo/halo split; Rung-7 adversarial pass clean — `docs/eval6.md`) |
 | **`compute-ekman-transport`** (Q6 — transport M=τ/(ρf) vs upper-ocean velocity) | 4–5 | ⏸️ DEFERRED — gated on Phil Q5 (see below) |
 | **`compute-normalized-difference`** | 5 | designed |
 
-**🎯 The Phil-free calculation set is now COMPLETE** (OHC, geostrophy, thermal wind, curl+Ekman
-pumping, steric height — all built and evidence-backed; adversarial passes pending on the last
-three). **This unlocks the deferred Level-1 primitive-extraction pass** (see Phase 2): with 5
-concrete callers and the CS/SN rotation interface stress-tested by curl, the next scheduled
-work is extracting `spatial-difference`/`spatial-interpolation`/`vertical-difference`/
-`rotate-to-geographic`/`compute-coriolis` into `ecco_common` and refactoring each skill onto
-them (re-running every skill's Rung-1/cross-check test to prove neutrality). Everything else
-remaining is either Phil-gated (transports, budgets, decompose-flux, **and now
-`compute-ekman-transport`** — see below) or a small add (`compute-normalized-difference`).
+**🎯 The Phil-free calculation set is COMPLETE and fully verified** (OHC, geostrophy, thermal
+wind, curl+Ekman pumping, steric height — **all five ✅ DONE, all cleared Rung-7 adversarial
+review**; evals 4–6 on 2026-08-06 found zero confirmed errors, one test-hardening fix each).
+The Level-1 primitive-extraction pass this unlocked has also been done (partial — see
+Phase 2). Everything remaining is either Phil-gated (transports, budgets, decompose-flux,
+**and `compute-ekman-transport`** — see below) or a small add (`compute-normalized-difference`).
 
 **`compute-ekman-transport` DEFERRED (2026-08-05, gated on Phil Q5).** Unlike every other
 Phil-free skill, Ekman transport has **no ECCO tutorial** (only 4 Intro-to-PO notebooks
@@ -218,7 +216,8 @@ vendor/jmd95.py`, pinned 3f0fcca) since no EOS was available (gsw/TEOS-10 absent
 check-value anchor instead). Verified: sum-of-parts (thermo+halo ≈ full) median 0.005 m /
 corr 0.9998; **steric ≈ SSH** corr 0.921 (independent, different collection). Teeth: specvol
 sign flip → steric-vs-SSH corr −0.92. Fixed a de-meaning/masking bug found during the build.
-⚠️ Rung-7 adversarial pass pending.
+✅ Rung-7 adversarial pass clean (2026-08-06, `docs/eval6.md`) — one caveat fixed (added a
+thermo/halo label-swap guard vs SST, which sum-of-parts couldn't catch). Steric is DONE.
 
 **Recipe 6 status (built 2026-08-05):** `compute-curl` does wind-stress curl (the LLC
 **two-rotation** sequence) + Ekman pumping vs the model's actual `WVEL`. No official curl
@@ -228,8 +227,10 @@ at ~30 m). Teeth: dropping the 2nd rotation shifts the curl ~30%; sign flip drop
 corr to −0.56. **Fixed two design-doc errors during the build:** oceTAUX/oceTAUY are on the
 U/V *faces* (not tracer points, as the doc claimed) so they're interpolated first; and the
 two rotations use the *same* formula (the "differing sign conventions" note was wrong).
-⚠️ Rung-7 adversarial pass pending. `compute-ekman-transport` (Q6) is a separate skill,
-now DEFERRED pending Phil Q5 (see the deferral note above).
+✅ Rung-7 adversarial pass clean (2026-08-06, `docs/eval5.md`) — **both historical rotation
+bugs confirmed blocked**; one loose-teeth-threshold caveat fixed (0.05→0.20). Curl is DONE.
+`compute-ekman-transport` (Q6) is a separate skill, now DEFERRED pending Phil Q5 (see the
+deferral note above).
 
 **Recipe 3 status (built ahead of the rest of Phase 5, as the safe next step):**
 `compute-thermal-wind` covers both the shear and the velocity reconstruction. **No official

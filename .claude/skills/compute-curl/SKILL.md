@@ -5,8 +5,9 @@ description: Compute the vertical curl of a vector field on the ECCO LLC90 grid 
 
 # compute-curl (Recipe 6 / Q5)
 
-> **🔬 Verification status (per `docs/verify.md`): ✅ built, evidence-backed; Rung-7 adversarial
-> pass PENDING.** No official curl helper exists (Rung 1 N/A). Correctness rests on: **(1)**
+> **🔬 Verification status (per `docs/verify.md`): ✅ DONE** (Rung-7 adversarial pass clean,
+> 2026-08-06 — `docs/eval5.md`; both historical rotation bugs confirmed blocked). No official
+> curl helper exists (Rung 1 N/A). Correctness rests on: **(1)**
 > the CS/SN component rotation is **bit-identical** to the official `ecco_v4_py.vector_calc.
 > UEVNfromUXVY` (max|Δ|=0); **(2)** Ekman pumping `w_E` matches the model's **actual WVEL**
 > near the base of the Ekman layer (~30 m): **corr 0.74, sign-agreement 0.89** off-equator
@@ -84,7 +85,7 @@ The Ekman-pumping cross-check additionally loads `ECCO_L4_OCEAN_VEL_…` for `WV
 | 4 physical sanity | ✅ | Wind-stress curl O(1e-7 Pa/m); Ekman `w_E` O(1e-6 m/s); correct sign — negative curl (downwelling) in the N. Pacific subtropical gyre. Equator masked. |
 | 5 cross-check | ✅ | **(a)** rotation == official `UEVNfromUXVY` (bit-identical). **(b) independent physical:** `w_E` vs the model's *actual* `WVEL` at ~30 m: corr **0.74**, sign-agree **0.89** off-equator (different variable/path → rules out a stress-path-only bug). |
 | 6 regression (teeth) | ✅ | `test_curl.py`: rotation + Ekman-vs-WVEL + a teeth test proving the 2nd rotation is load-bearing (~30% shift) + offline guards. Sign flip drops WVEL corr to −0.56 (fails). |
-| 7 adversarial | ⚠️ pending | Standing disprove-pass is the final gate before fully "done" — see acceptance.md. |
+| 7 adversarial | ✅ | Independent Sonnet disprove-pass (2026-08-06, `docs/eval5.md`): could not disprove; zero confirmed errors; both historical rotation bugs blocked. One caveat fixed (teeth threshold 0.05→0.20). |
 
 ## Limits / honest caveats
 

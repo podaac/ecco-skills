@@ -141,9 +141,16 @@ def test_second_rotation_is_required():
     m = np.isfinite(a) & np.isfinite(b)
     reldiff = float(np.nanmedian(np.abs(a[m] - b[m]))
                     / (np.nanmedian(np.abs(a[m])) + 1e-30))
-    assert reldiff > 0.05, (
-        f"dropping the 2nd rotation barely changed the curl (reldiff={reldiff:.3f}) — "
-        f"teeth not discriminating")
+    # Threshold TIGHTENED 0.05 → 0.20 (2026-08-06, adversarial-review caveat A). Dropping
+    # the 2nd rotation entirely (the historical eval-#2 bug) gives reldiff ≈ 0.315, so 0.20
+    # catches it with margin. The old 0.05 was too loose: a *partial* rotation error —
+    # scaling SN to ~90% of correct — lands at reldiff ≈ 0.055 and slipped through while
+    # being physically wrong. Measured SN-scaling landings: correct 0.000, SN×0.90 0.055,
+    # ×0.80 0.105, ×0.70 0.150, dropped(×0) 0.315. 0.20 fails a ≳30% rotation error while
+    # staying far clear of the correct code (0.000).
+    assert reldiff > 0.20, (
+        f"2nd rotation not load-bearing enough (reldiff={reldiff:.3f} ≤ 0.20) — either the "
+        f"rotation is being partly skipped/mis-scaled, or the teeth check stopped discriminating")
     return f"2nd rotation is load-bearing: skipping it shifts the curl by {reldiff*100:.0f}% (median)"
 
 
