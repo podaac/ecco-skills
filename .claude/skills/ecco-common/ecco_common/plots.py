@@ -29,6 +29,17 @@ def _default_out(name):
     return os.path.join(d, name)
 
 
+def _save(fig, out, log):
+    """Save a figure to `out`, creating its parent directory first. Ensures the target
+    dir exists whether `out` came from _default_out or an explicit caller path (e.g.
+    'plots/gallery/x.png'), so savefig never fails on a missing directory."""
+    parent = os.path.dirname(os.path.abspath(out))
+    os.makedirs(parent, exist_ok=True)
+    fig.savefig(out, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def to_2d(field, tile=None, k=0, time=0):
     """Reduce a DataArray to a single 2-D horizontal slice for plotting.
     Selects k/time if those dims exist, and one tile if `tile` is given."""
@@ -56,8 +67,7 @@ def plot_tile(field, tile, k=0, time=0, cmap="RdBu_r", title=None, out=None,
     if title:
         fig.suptitle(title)
     out = out or _default_out(f"tile{tile}_{getattr(field,'name','field')}.png")
-    fig.savefig(out, dpi=120, bbox_inches="tight")
-    plt.close(fig)
+    _save(fig, out, log)
     log(f"  [plot] saved single-tile plot → {out}")
     return out
 
@@ -71,8 +81,7 @@ def plot_all_tiles(field, k=0, time=0, cmap="RdBu_r", title=None, out=None, log=
     if title:
         f.suptitle(title)
     out = out or _default_out(f"alltiles_{getattr(field,'name','field')}.png")
-    f.savefig(out, dpi=120, bbox_inches="tight")
-    plt.close(f)
+    _save(f, out, log)
     log(f"  [plot] saved all-tiles plot → {out}")
     return out
 
@@ -94,7 +103,6 @@ def plot_global(field, ds_grid, k=0, time=0, cmap="RdBu_r", title=None,
     if title:
         fig.suptitle(title)
     out = out or _default_out(f"global_{getattr(field,'name','field')}.png")
-    fig.savefig(out, dpi=120, bbox_inches="tight")
-    plt.close(fig)
+    _save(fig, out, log)
     log(f"  [plot] saved global map → {out}")
     return out

@@ -681,16 +681,36 @@ OHC = (THETA * rhoConst * Cp * rA * drF * hFacC * maskC).sum(["tile","j","i","k"
 
 Uses: `load-field` (THETA), `load-grid`, `volume-weight`, `global-sum`
 
-#### `compute-steric-height`
+#### ✅ `compute-steric-height` — BUILT 2026-08-05 (steric height + thermo/halo split)
 Steric height anomaly from density:
 ```python
-h' = integral of (-V_sp'/g) dp
+h' = integral of (-V_sp'/g) dp        # V_sp' = 1/rho - 1/rho_ref
 ```
-Where V_sp' = 1/rho - 1/rho_ref.
+Integrated from the surface (0 dbar) DOWN to a reference level (2000 dbar) — steric height
+is relative to that depth. Decomposed into thermosteric (temperature) and halosteric
+(salinity) contributions by recomputing density holding S or θ at reference.
 
-Can be decomposed into thermosteric (temperature contribution) and halosteric (salinity contribution) by computing density while holding one variable constant.
+**EOS decision (2026-08-05):** the base term uses the model's own `RHOAnoma` (no EOS call);
+but the reference profile `1/rho_ref` and the thermo/halo split need a T,S→ρ EOS, and NONE
+was available (gsw/TEOS-10 not installed; no EOS in `ecco_v4_py` or the vendored helper). So
+we **vendored the canonical MITgcm JMD95** (`ecco-common/vendor/jmd95.py`, pinned to the same
+commit 3f0fcca as `ecco_po_tutorials.py`; only edit: `np.asfarray`→`np.asarray(...,float)` for
+NumPy 2.0). It's the same EOS ECCO uses internally, so `rho_ref` is consistent with RHOAnoma.
+JMD95 wants pressure in **dbar** (Pa×1e-4). Self-tests against its published check value
+`densjmd95(35.5,3,3000)=1041.83267`.
 
-Uses: `load-field` (THETA, SALT), equation of state (JMD95), `vertical-difference`, `global-mean`
+**z\* + masking:** integration thickness scaled by `rstarfac = 1 + ETAN/Depth` and gated by
+`hFacC` (partial cells); land AND "too-shallow" columns (bathymetry < 2000 dbar) excluded;
+global mean removed.
+
+**Verification:** Rung-1 N/A for the integral (EOS check-value anchor instead). Sum-of-parts
+(thermo+halo ≈ full) median residual 0.005 m, corr 0.9998. **Steric ≈ SSH** (independent, vs
+a different collection): corr 0.921 (steric explains ~85% of SSH variance; the rest is the
+non-steric/mass component). Teeth-verified (specvol sign flip → steric-vs-SSH corr −0.92).
+⚠️ Rung-7 adversarial pass pending. See `compute-steric-height/references/acceptance.md`.
+
+Uses: `load-field` (RHOAnoma, THETA, SALT, SSH+ETAN), `load-grid`, vendored `jmd95`.
+Level-1 primitives still inlined.
 
 #### `compute-transport-across-section`
 Volume/heat/salt transport across an arbitrary section.
@@ -778,7 +798,7 @@ A symmetric alternative, `|A - B| / (|A| + |B|)`, is better-behaved when both fi
 
 Can be binned by latitude or depth using area-weighted averages.
 
-#### `compute-curl`
+#### ✅ `compute-curl` — BUILT 2026-08-05 (curl + Ekman pumping, Recipe 6 / Q5)
 Vertical component of the curl of a vector field on the LLC grid (e.g. wind-stress curl
 for Ekman pumping). **A bare `d(v)/dx − d(u)/dy` on native components is wrong** — and so
 is a single rotation. On the LLC grid there are **TWO rotations**: rotate the components
@@ -810,11 +830,24 @@ curl_z = dv_phi_dlambda - du_lambda_dphi
 ```
 
 **Both rotations are mandatory** and must be encoded in the skill, not left to agent
-inference. Note the differing sign conventions between the component rotation and the
-derivative rotation. Omit step 0's interpolation when inputs are already at tracer
-points (e.g. `oceTAUX`/`oceTAUY`).
+inference. **Correction (2026-08-05, from the build):** the two rotations use the *same*
+formula (`zonal = X·CS − Y·SN`, `merid = X·SN + Y·CS`) — it's one rotation applied twice
+(to components, then to the derivative vectors); earlier "differing sign conventions"
+wording was misleading. Skipping the 2nd rotation shifts the curl by ~30% (teeth-tested).
 
-Uses: `spatial-interpolation`, `rotate-to-geographic`, `spatial-difference`
+**Grid-position correction (2026-08-05 — this was BACKWARDS before):** `oceTAUX`/`oceTAUY`
+are NOT at tracer points — the real data has `oceTAUX` on the U-face (`i_g`) and `oceTAUY`
+on the V-face (`j_g`). So they DO need step-0 `interp_2d_vector` to centers, exactly like
+`UVEL`/`VVEL`. It is `EXFtaux`/`EXFtauy` that sit at tracer points (but those are the bulk
+stress we avoid for Ekman). **Units:** curl is `[field]/m` — Pa/m for a stress curl, s⁻¹
+for a velocity curl (relative vorticity).
+
+**Verification:** no official curl helper exists (Rung 1 N/A); the CS/SN rotation core is
+bit-identical to `ecco_v4_py.vector_calc.UEVNfromUXVY`, and Ekman pumping `w_E` matches the
+model's actual `WVEL` at ~30 m to corr 0.74 / sign-agreement 0.89 (Rung 5). ⚠️ Rung-7
+adversarial pass pending. See `compute-curl/references/acceptance.md`.
+
+Uses: `load-field` (oceTAUX/oceTAUY + WVEL), `load-grid`. Level-1 primitives still inlined.
 
 #### `compute-ekman-transport`
 Wind-driven Ekman transport (depth-integrated volume transport per unit length, m^2 s-1) from wind stress. **Note the `rho`** — without it the units don't close:
@@ -914,19 +947,19 @@ See `compute-transport-across-section` for the full reasoning. **Key traps:** co
    - Nonlinear: `vel' * tracer'`
 5. `apply-mask` + `global-sum` for any of the above
 
-### Recipe 6: Ekman Pumping Verification
+### Recipe 6: Ekman Pumping Verification — ✅ BUILT 2026-08-05 (`compute-curl`)
 
 **Complexity:** Medium (4-5 skills)
 
 1. `load-field` → wind stress (tau_x, tau_y = `oceTAUX`, `oceTAUY`), vertical velocity (WVEL)
-2. `compute-curl` → vertical curl of wind stress on the LLC grid. For stress (already at tracer points) the sequence is: rotate components→geographic → diff each along both model axes → interp derivatives → **rotate the derivative vectors** → combine. **Two rotations**, skip the initial interp for tracer-point inputs. Not a bare `d(tau_y)/dx − d(tau_x)/dy`. See `compute-curl`.
+2. `compute-curl` → vertical curl of wind stress on the LLC grid. **`oceTAUX`/`oceTAUY` are on the U/V faces (`i_g`/`j_g`), NOT tracer points — so DO interpolate to centers first**, then: rotate components→geographic → diff each along both model axes → interp derivatives → **rotate the derivative vectors** (same rotation) → combine. **Two rotations.** Not a bare `d(tau_y)/dx − d(tau_x)/dy`. See `compute-curl`.
 3. `compute-coriolis` → f
 4. Ekman pumping velocity. The full form is `w_E = (1/rho) * k · curl(tau / f)`, which expands to:
    ```
-   w_E = curl(tau)/(rho*f)  +  (beta * tau_x)/(rho * f^2)
+   w_E = curl(tau)/(rho*f)  +  (beta * tau_zonal)/(rho * f^2)
    ```
-   The second (beta) term is **not** negligible for the Sverdrup/pumping story. The `curl(tau)/(rho*f)` f-plane approximation is acceptable only if stated explicitly.
-5. `compute-normalized-difference` → compare w_E with WVEL at the base of the Ekman layer
+   The second (beta) term is **not** negligible for the Sverdrup/pumping story. The `curl(tau)/(rho*f)` f-plane approximation is acceptable only if stated explicitly (`use_beta=False`). Built with the β term on by default.
+5. compare w_E with WVEL at the base of the Ekman layer (~30 m). **Result:** corr 0.74, sign-agreement 0.89 off-equator — Ekman pumping is clearly visible in the model's vertical velocity. (A dedicated `compute-normalized-difference` skill is still designed-but-unbuilt; the comparison is currently done inline in the curl skill's test.)
 
 ---
 

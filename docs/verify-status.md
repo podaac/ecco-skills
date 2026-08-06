@@ -72,6 +72,38 @@ is required by verify.md before a science skill is marked ✅. Report as ⚠️ 
 independently cross-checked, but not adversarially reviewed). Record:
 `compute-thermal-wind/references/acceptance.md`.
 
+### `compute-curl` (Recipe 6 / Q5) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+
+| Rung | Status | Evidence / gap |
+|------|--------|----------------|
+| 1 official helper | N/A | No curl helper in vendored module or `ecco_v4_py`. **Partial:** CS/SN rotation core is bit-identical to official `vector_calc.UEVNfromUXVY` (max\|Δ\|=0). |
+| 2 tutorial number | ✅ (operator) | Two-rotation pipeline from the official native-grid gradient/curl tutorial; publishes maps not scalars. |
+| 3 conservation | N/A | Diagnostic, not a budget. |
+| 4 physical sanity | ✅ | Curl ~1e-7 Pa/m; correct sign (N. Pacific subtropical gyre negative → downwelling); w_E O(1e-6 m/s). Equator masked. |
+| 5 cross-check | ✅ | **(a)** rotation == `UEVNfromUXVY` (bit-identical). **(b) independent physical:** Ekman w_E vs actual **WVEL** @~30 m: **corr 0.738, sign-agree 0.89** (48,383 pts). |
+| 6 regression (teeth) | ✅ | `test_curl.py`: rotation + Ekman-vs-WVEL + a teeth test (2nd rotation is load-bearing, ~30% shift) + 6 offline guards. Sign flip → WVEL corr −0.56 (fails). |
+| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — final gate before "done". |
+
+**Status: NOT yet DONE** — all applicable rungs cleared except Rung-7. ⚠️ evidence-backed.
+Build fixed two design-doc errors (oceTAUX/Y are on faces not tracer points; the two
+rotations use the same formula). Record: `compute-curl/references/acceptance.md`.
+
+### `compute-steric-height` (Recipe 3-steric) — ⚠️ evidence-backed; Rung-7 adversarial pass PENDING
+
+| Rung | Status | Evidence / gap |
+|------|--------|----------------|
+| 1 official helper | N/A (integral) | **EOS anchor:** vendored JMD95 `densjmd95(35.5,3,3000)` = **1041.83267** == published (automated). |
+| 2 tutorial number | ✅ (operator) | Pipeline transcribed from `Steric_height.ipynb`; publishes maps not scalars. |
+| 3 conservation | N/A | Diagnostic, not a budget. |
+| 4 physical sanity | ✅ | Global-mean-removed anomaly range ≈ [-3.2, 2.2] m; high in warm subtropics, low in Southern Ocean (matches SSH). Land + too-shallow (<2000 dbar) masked. |
+| 5 cross-check | ✅ | **(a) sum-of-parts:** thermo+halo ≈ full, median residual **0.005 m**, corr **0.9998**. **(b) INDEPENDENT:** steric ≈ SSH, corr **0.921** (different collection; residual = non-steric mass part). |
+| 6 regression (teeth) | ✅ | `test_steric.py`: EOS check-value + sum-of-parts + steric-vs-SSH + teeth (specvol sign flip → steric-vs-SSH corr −0.92) + offline guards. |
+| 7 adversarial | ⚠️ TODO | Standing disprove-pass not yet run — final gate before "done". |
+
+**Status: NOT yet DONE** — all applicable rungs cleared except Rung-7. ⚠️ evidence-backed.
+Vendored the MITgcm JMD95 EOS (no EOS was available); fixed a de-meaning/masking bug during
+the build. Record: `compute-steric-height/references/acceptance.md`.
+
 ---
 
 ## Infrastructure skills
@@ -97,6 +129,8 @@ helpers where relevant + the `ecco-common` regression suite.)*
 | `compute-ocean-heat-content/scripts/test_validation.py` | 10 (+1 Rung-2 tutorial check) | ✅ (bad-input cases fail; land-NaN passes) |
 | `compute-geostrophic-balance/scripts/test_geostrophic.py` | Rung-1 match + 5 guards | ✅ (breaking equatorial mask fails it) |
 | `compute-thermal-wind/scripts/test_thermal_wind.py` | 3 cross-checks + 6 guards | ✅ (sign flip fails checks 1–3; dropping `g` fails check 3) |
+| `compute-curl/scripts/test_curl.py` | rotation + Ekman-vs-WVEL + teeth + 6 guards | ✅ (2nd-rotation drop = 30% shift; sign flip → WVEL corr −0.56) |
+| `compute-steric-height/scripts/test_steric.py` | EOS + sum-of-parts + steric-vs-SSH + teeth + 5 guards | ✅ (specvol sign flip → steric-vs-SSH corr −0.92) |
 | Run all: `.claude/skills/run_all_tests.py` | all of the above | — |
 
 **Not yet automated (open, per verify.md / evals):** CI wiring; exact dependency lockfile;

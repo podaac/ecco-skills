@@ -99,7 +99,7 @@ Round-1 issues, now **fixed**:
 Still open (correctly gated): budget term lists / residual definitions (Phil), an
 exact lockfile + CI golden-value regression, Linux/Windows testing.
 
-## Phase 2 — Grid operation primitives (Level 1) *(DEFERRED — extract on 2nd-caller demand)*
+## Phase 2 — Grid operation primitives (Level 1) *(DEFERRED — extract after the Phil-free calc set, curl-driven)*
 
 The reusable C-grid mechanics almost every physics calc needs.
 
@@ -122,10 +122,23 @@ Rationale:
 - Refactoring already-verified code into primitives delivers **no new science** and
   forces a re-verification pass.
 
-**Rule: extract each primitive when the SECOND caller appears** — i.e. when we build the
-next skill that needs it (curl for Ekman, or thermal wind). At that point there are 2+
-concrete callers to shape the interface; extract the primitive as part of that build and
-refactor geostrophy onto it, re-running its Rung-1 test to prove the refactor is neutral.
+**Rule (refined 2026-08-05): extract after the Phil-free calc set, curl-driven.** The
+original "extract on the 2nd caller" rule was consciously superseded: thermal wind (the 2nd
+caller) and curl (the 3rd) each kept the diff/interp/rotation logic *inlined* (copied
+verbatim from geostrophy), because extracting mid-build would destabilize the already-✅
+skills and force re-verification each time. Now there are 3–4 concrete callers and — via
+curl — the CS/SN `rotate-to-geographic` interface has been fully stress-tested (curl needs
+BOTH rotations; curl's rotation is bit-identical to `vector_calc.UEVNfromUXVY`). So the
+extraction should happen as a **dedicated pass once the Phil-free calc set is in** (curl ✅,
+thermal wind ✅; steric height next), pulling `spatial-difference` / `spatial-interpolation`
+/ `vertical-difference` / `rotate-to-geographic` / `compute-coriolis` into `ecco_common`
+and refactoring each calc skill onto them, re-running every skill's Rung-1/cross-check test
+to prove the refactor is neutral. **Curl is the forcing function for `rotate-to-geographic`
+specifically** — consider matching the extracted helper to `UEVNfromUXVY`.
+
+*(Note: `compute-curl`'s `_rotate_to_geographic` matches the official `ecco_v4_py.
+vector_calc.UEVNfromUXVY` exactly — that official helper is a strong candidate to wrap or
+match when `rotate-to-geographic` is extracted.)*
 
 **Reminder when they are built:** ECCO tutorials use the xgcm `boundary=`/`fill_value=`
 API and `ecco.get_llc_grid()` — correct for our pinned xgcm 0.9.0 (do **not** use the
@@ -173,10 +186,41 @@ science shouldn't be finalized until Phil weighs in.
 
 | Skill | Level | Status |
 |---|---|---|
-| **`compute-curl`, `compute-ekman-transport`** + **Recipe 6 (Ekman pumping)** | 4–5 | designed |
+| **`compute-curl`** + **Recipe 6 (Ekman pumping)** | 4–5 | ✅ BUILT 2026-08-05 (curl + Ekman pumping; ⚠️ Rung-7 adversarial pass pending) |
 | **`compute-thermal-wind` + `reconstruct-velocity-from-thermal-wind`** (Recipe 3) | 4 | ✅ BUILT 2026-08-04 (one skill; ⚠️ Rung-7 adversarial pass pending) |
-| **`compute-steric-height`** | 4 | designed |
+| **`compute-steric-height`** (Recipe 3-steric) | 4 | ✅ BUILT 2026-08-05 (steric + thermo/halo split; ⚠️ Rung-7 adversarial pass pending) |
+| **`compute-ekman-transport`** (Q6 — transport M=τ/(ρf) vs upper-ocean velocity) | 4–5 | designed (separate from curl/pumping) |
 | **`compute-normalized-difference`** | 5 | designed |
+
+**🎯 The Phil-free calculation set is now COMPLETE** (OHC, geostrophy, thermal wind, curl+Ekman
+pumping, steric height — all built and evidence-backed; adversarial passes pending on the last
+three). **This unlocks the deferred Level-1 primitive-extraction pass** (see Phase 2): with 5
+concrete callers and the CS/SN rotation interface stress-tested by curl, the next scheduled
+work is extracting `spatial-difference`/`spatial-interpolation`/`vertical-difference`/
+`rotate-to-geographic`/`compute-coriolis` into `ecco_common` and refactoring each skill onto
+them (re-running every skill's Rung-1/cross-check test to prove neutrality). Everything else
+remaining is either Phil-gated (transports, budgets, decompose-flux) or a small add
+(`compute-ekman-transport` Q6, `compute-normalized-difference`).
+
+**Steric-height status (built 2026-08-05):** steric height anomaly (∫−V'_sp/g dp to 2000 dbar)
++ thermosteric/halosteric decomposition. **Vendored the MITgcm JMD95 EOS** (`ecco-common/
+vendor/jmd95.py`, pinned 3f0fcca) since no EOS was available (gsw/TEOS-10 absent, none in
+`ecco_v4_py`); base term uses the model's own RHOAnoma. No steric helper (Rung-1 N/A; EOS
+check-value anchor instead). Verified: sum-of-parts (thermo+halo ≈ full) median 0.005 m /
+corr 0.9998; **steric ≈ SSH** corr 0.921 (independent, different collection). Teeth: specvol
+sign flip → steric-vs-SSH corr −0.92. Fixed a de-meaning/masking bug found during the build.
+⚠️ Rung-7 adversarial pass pending.
+
+**Recipe 6 status (built 2026-08-05):** `compute-curl` does wind-stress curl (the LLC
+**two-rotation** sequence) + Ekman pumping vs the model's actual `WVEL`. No official curl
+helper exists (Rung-1 N/A); verified by matching the official rotation helper
+`vector_calc.UEVNfromUXVY` bit-for-bit and by `w_E` vs `WVEL` (corr 0.74, sign-agree 0.89
+at ~30 m). Teeth: dropping the 2nd rotation shifts the curl ~30%; sign flip drops the WVEL
+corr to −0.56. **Fixed two design-doc errors during the build:** oceTAUX/oceTAUY are on the
+U/V *faces* (not tracer points, as the doc claimed) so they're interpolated first; and the
+two rotations use the *same* formula (the "differing sign conventions" note was wrong).
+⚠️ Rung-7 adversarial pass pending. `compute-ekman-transport` (Q6) remains a separate,
+unbuilt skill.
 
 **Recipe 3 status (built ahead of the rest of Phase 5, as the safe next step):**
 `compute-thermal-wind` covers both the shear and the velocity reconstruction. **No official

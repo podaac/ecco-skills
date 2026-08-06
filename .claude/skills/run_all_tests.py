@@ -25,6 +25,10 @@ SUITES = [
      os.path.join(_HERE, "compute-geostrophic-balance", "scripts", "test_geostrophic.py")),
     ("compute-thermal-wind (cross-checks + guards)",
      os.path.join(_HERE, "compute-thermal-wind", "scripts", "test_thermal_wind.py")),
+    ("compute-curl (rotation + Ekman-vs-WVEL + guards)",
+     os.path.join(_HERE, "compute-curl", "scripts", "test_curl.py")),
+    ("compute-steric-height (EOS + sum-of-parts + steric-vs-SSH + guards)",
+     os.path.join(_HERE, "compute-steric-height", "scripts", "test_steric.py")),
 ]
 
 
