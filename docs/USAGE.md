@@ -80,6 +80,12 @@ being told. (A healthy `.venv` is reused automatically — this is a one-time bu
 # Thermal-wind shear + velocity reconstruction for a month:
 .venv/bin/python .claude/skills/compute-thermal-wind/scripts/run.py 2000-01
 
+# Wind-stress curl + Ekman pumping for a month:
+.venv/bin/python .claude/skills/compute-curl/scripts/run.py 2000-01
+
+# Steric height (+ thermosteric/halosteric split) for a month:
+.venv/bin/python .claude/skills/compute-steric-height/scripts/run.py 2000-01
+
 # Plot a global sea-surface-temperature map:
 .venv/bin/python .claude/skills/plot-ecco-field/scripts/run.py \
     --collection ECCO_L4_TEMP_SALINITY_LLC0090GRID_MONTHLY_V4R4 \
@@ -107,10 +113,13 @@ triggers:
 
 | You ask… | Skills invoked, in order | What each step does |
 |----------|--------------------------|---------------------|
-| **"How much has ocean heat content changed between two months?"** | **1.** `load-grid` → **2.** `load-field` (THETA/SALT, month A) → **3.** *validate* → **4.** `load-field` (THETA/SALT, month B) → **5.** *validate* → **6.** *difference* | Grid gives cell volumes (`rA·drF·hFacC`); each month's temperature is volume-weighted and summed to OHC; the physical-bounds/benchmark checks run per month; the two are differenced (the change is what's physical). |
-| **"Compute geostrophic velocities for a month."** | **1.** `load-grid` → **2.** `load-field` (density/pressure `RHOAnoma`,`PHIHYDcR`) → **3.** *compute* → **4.** *validate* | Grid supplies `dxC/dyC`, `YC`, and the xgcm object; the pressure gradient is differenced on the C-grid and interpolated to tracer points; `v_g = ρ⁻¹∂p/∂x / f`; runtime checks confirm grid position, units, and off-equator bounds. |
-| **"Reconstruct the deep currents from density"** / **"where does density set the vertical current shear?"** (thermal wind) | **1.** `load-grid` → **2.** `load-field` (density `RHOAnoma`) → **3.** *compute shear* `∂u/∂z,∂v/∂z` → **4.** *reconstruct velocity from z0=−3000 m* → **5.** *validate* → **6.** `load-field` (UVEL/VVEL) → **7.** *cross-check vs actual velocity* | Grid supplies `dxC/dyC`, `drC`, `Z/Zl/Zu`, `YC`; the density gradient gives the thermal-wind shear `(g/fρ)∂ρ/∂x`; integrating it up/down from a level of no motion reconstructs the velocity; the reconstruction is then compared to the model's **actual** UVEL/VVEL (the currents field is loaded only for this check). |
-| **"Show me a global map of sea-surface temperature."** | **1.** `load-grid` → **2.** `load-field` (THETA) → **3.** `plot-ecco-field` (`--mode global`) | Grid gives `XC/YC` for re-projection; the field is loaded for the requested month; the official `ecco_v4_py` plotter stitches the 13 tiles into a lat-lon PNG in `./plots/`. |
+| **"How much has global ocean heat content changed between January 2000 and January 2010?"** | **1.** `load-grid` → **2.** `load-field` (THETA/SALT, month A) → **3.** *validate* → **4.** `load-field` (THETA/SALT, month B) → **5.** *validate* → **6.** *difference* | Grid gives cell volumes (`rA·drF·hFacC`); each month's temperature is volume-weighted and summed to OHC; the physical-bounds/benchmark checks run per month; the two are differenced (the change is what's physical). |
+| **"Compute the geostrophic velocities for January 2008."** | **1.** `load-grid` → **2.** `load-field` (density/pressure `RHOAnoma`,`PHIHYDcR`) → **3.** *compute* → **4.** *validate* | Grid supplies `dxC/dyC`, `YC`, and the xgcm object; the pressure gradient is differenced on the C-grid and interpolated to tracer points; `v_g = ρ⁻¹∂p/∂x / f`; runtime checks confirm grid position, units, and off-equator bounds. |
+| **"For January 2015, if I only knew the ocean's density, how well could I reconstruct the deep currents?"** / **"Where does the density structure control the vertical shear of the currents in January 2010?"** (thermal wind) | **1.** `load-grid` → **2.** `load-field` (density `RHOAnoma`) → **3.** *compute shear* `∂u/∂z,∂v/∂z` → **4.** *reconstruct velocity from z0=−3000 m* → **5.** *validate* → **6.** `load-field` (UVEL/VVEL) → **7.** *cross-check vs actual velocity* | Grid supplies `dxC/dyC`, `drC`, `Z/Zl/Zu`, `YC`; the density gradient gives the thermal-wind shear `(g/fρ)∂ρ/∂x`; integrating it up/down from a level of no motion reconstructs the velocity; the reconstruction is then compared to the model's **actual** UVEL/VVEL (the currents field is loaded only for this check). |
+| **"Where is the wind driving surface water down into the ocean (Ekman pumping) in January 2010?"** | **1.** `load-grid` → **2.** `load-field` (stress `oceTAUX`/`oceTAUY`) → **3.** *wind-stress curl* (two LLC rotations) → **4.** *Ekman pumping* `w_E` → **5.** *validate* → **6.** `load-field` (WVEL) → **7.** *cross-check vs actual vertical velocity* | Grid supplies `dxC/dyC`, `CS/SN`, `YC`; stress is interpolated to centers then curled via the mandatory two rotations; `w_E = curl(τ)/(ρf) + β·τ/(ρf²)`; compared to the model's actual `WVEL` (loaded only for the check). Uses total stress `oceTAUX/oceTAUY`, not the bulk `EXFtaux/y`. |
+| **"How much of sea level is set by the ocean's density (steric height) in January 2000?"** | **1.** `load-grid` → **2.** `load-field` (density `RHOAnoma`) + (`THETA`/`SALT`) + (`SSH`/`ETAN`) → **3.** *specific-volume anomaly vs a JMD95 reference* → **4.** *integrate 0→2000 dbar (z\*/hFacC-weighted)* → **5.** *thermo/halo split* → **6.** *validate* → **7.** *cross-check vs actual SSH* | Grid supplies `Z/Zl/Zu`, `hFacC`, `Depth`, `rA`; the base term uses the model's own `RHOAnoma` (no EOS), the reference profile + T/S split use the vendored JMD95 EOS; the steric anomaly is compared to the model's actual `SSH`. |
+| **"Show me a global map of sea-surface temperature for June 2000."** | **1.** `load-grid` → **2.** `load-field` (THETA) → **3.** `plot-ecco-field` (`--mode global`) | Grid gives `XC/YC` for re-projection; the field is loaded for the requested month; the official `ecco_v4_py` plotter stitches the 13 tiles into a lat-lon PNG in `./plots/`. |
+| **"Map the salinity at 1000 m for March 2005 (and plot any calculation's result too)."** | **1.** `load-grid` → **2.** `load-field` (SALT) → **3.** `plot-ecco-field` (`--mode global --depth 1000`) | Same plotter, at a chosen depth level — as a stitched global map, a single LLC tile, or all 13 tiles. It also renders a **calculation's output** (e.g. geostrophic-speed, Ekman-pumping, or steric-height maps). |
 | **"Set up my environment"** / **"is my environment working?"** | **1.** `ecco-setup` set-up mode (`survey` → build `.venv` → install → auto-run verify) — or **verify mode** alone for a health-check | Surveys the machine's Python, builds the isolated `.venv`, installs the stack, then proves it works (imports + a real `ecco.get_llc_grid` smoke test). Verify is a mode of the same skill and is also runnable on its own (no rebuild). |
 
 **Under every `load-grid` / `load-field` step** sits the shared `ecco_common` layer: check
@@ -118,9 +127,10 @@ the local `./data/ecco` cache → on a miss, query the **NASA CMR** API for the 
 real download URL → size-guard the request → download with `~/.netrc` auth → cache and
 open as xarray. You never call that layer directly; the skills compose it.
 
-> The rows above are the **built** calculations. Questions about transports, budgets,
-> Ekman pumping, and steric height are *designed* (see [`design.md`](design.md) →
-> Calculation Recipes) but not yet implemented — the table will grow as those land.
+> The rows above are the **built** calculations (all five science skills + plotting +
+> environment). Questions about section transports and heat/salt budgets are *designed*
+> (see [`design.md`](design.md) → Calculation Recipes) but not yet implemented — most are
+> gated on domain-expert input — and the table will grow as those land.
 
 ---
 
@@ -129,17 +139,20 @@ open as xarray. You never call that layer directly; the skills compose it.
 ```
 .claude/skills/
 ├── ecco-setup/                 # build the project-local .venv (survey → install → verify)
-│                               #   (+ verify_env.py: verify mode — health-check, no rebuild)
-├── ecco-common/                # SHARED library: loaders, cache, CMR access, plots
-│   ├── ecco_common/            #   imported by every calc skill (composition backbone)
-│   ├── vendor/                 #   pinned official ecco_po_tutorials.py (verification reference)
-│   └── tests/                  #   offline regression suite
+│                               #   scripts/: survey.py, setup_env.py, verify_env.py (verify mode)
+├── ecco-common/                # SHARED library imported by every calc skill (composition backbone)
+│   ├── ecco_common/            #   loaders, cache, CMR access, plots, grid_ops (Level-1 primitives)
+│   ├── ecco_preflight.py       #   stdlib-only env guard: clear "run ecco-setup" msg on a broken .venv
+│   ├── vendor/                 #   pinned official ecco_po_tutorials.py + jmd95.py (verification refs)
+│   └── tests/                  #   offline regression suites (ecco_common, grid_ops, preflight)
 ├── load-grid/                  # load LLC90 geometry + build the xgcm grid object
 ├── load-field/                 # download/cache any ECCO science field by month/day
 ├── plot-ecco-field/            # PNG of a field: single tile / all tiles / stitched global map
 ├── compute-ocean-heat-content/ # ✅ Recipe 1 — volume-weighted OHC + change between months
 ├── compute-geostrophic-balance/# ✅ Recipe 2 — geostrophic velocities from pressure/density
-├── compute-thermal-wind/       # Recipe 3 — vertical shear from density + velocity reconstruction
+├── compute-thermal-wind/       # ✅ Recipe 3 — vertical shear from density + velocity reconstruction
+├── compute-curl/               # ✅ wind-stress curl + Ekman pumping (vs the model's WVEL)
+├── compute-steric-height/      # ✅ steric height + thermosteric/halosteric split (vs SSH)
 └── run_all_tests.py            # single entry point for all offline test suites
 
 docs/                           # living design + verification docs
@@ -158,6 +171,14 @@ docs/                           # living design + verification docs
   and size-guarded. The skills do **not** depend on any MCP server at runtime (see
   [`design.md`](design.md) → Data Access Pattern).
 - **Data is never committed.** `.gitignore` excludes `/data/`, `/.venv/`, and `/plots/`.
+- **Environment guard.** Every calc/plot/data `run.py` calls `ecco_preflight.ensure_env()`
+  (a stdlib-only module) before importing the heavy stack, so a *broken* `.venv` yields a
+  clear "run ecco-setup" message rather than a raw traceback. A *missing* `.venv` (script
+  can't even start) is handled by the "Environment — do this first" block in each `SKILL.md`.
+- **Vendored, pinned references.** `ecco-common/vendor/` holds `ecco_po_tutorials.py` (the
+  official tutorial helpers, used as a Rung-1 verification reference) and `jmd95.py` (the
+  MITgcm equation of state, needed by steric height) — both pinned to a fixed upstream
+  commit. No EOS package (`gsw`) is required.
 
 ---
 
