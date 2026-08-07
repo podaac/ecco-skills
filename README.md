@@ -44,6 +44,7 @@ You don't need to know Python, the grid, or where the data lives. You ask; the a
 | **"Where is the wind driving surface water down into the ocean (Ekman pumping) in January 2010?"** | The wind-stress curl and the Ekman pumping velocity it drives, checked against the model's own vertical velocity — showing where the wind pumps water down (subtropical gyres) vs up (subpolar, Southern Ocean). |
 | **"How much of sea level is set by the ocean's density (steric height) in January 2000?"** | Steric height anomaly — the part of sea-surface height from the water column's temperature/salinity structure — split into thermosteric (temperature) and halosteric (salinity) contributions, and compared to the model's actual sea-surface height. |
 | **"Show me a global map of sea-surface temperature for June 2000."** | A publication-quality world map (PNG) of the field for that month, correctly stitched across the whole globe. |
+| **"Map the salinity at 1000 m for March 2005 (and plot any calculation's result too)."** | A PNG of any field at any depth — as a stitched global map, a single LLC tile, or all 13 tiles laid out. The same plotting also renders a calculation's *output* (e.g. the geostrophic-speed or Ekman-pumping maps above). |
 
 Any month (or pair of months) in 1992–2017 works — swap the dates above for whatever period you care about. Each answer comes with its reasoning and a ✅ / ⚠️ verdict — never just a bare number. Ocean transports across a section and heat/salt budgets are [designed and coming](#build-status).
 
