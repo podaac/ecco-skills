@@ -20,6 +20,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
+import ecco_preflight  # noqa: E402
+ecco_preflight.ensure_env("compute-ocean-heat-content")  # clear msg if env is unhealthy
 from ecco_common import load_grid, load_field  # noqa: E402
 
 TS_SHORTNAME = "ECCO_L4_TEMP_SALINITY_LLC0090GRID_MONTHLY_V4R4"

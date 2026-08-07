@@ -41,11 +41,11 @@ PROJECT_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
 VENV_DIR = os.path.join(PROJECT_ROOT, ".venv")
 REQUIREMENTS = os.path.join(HERE, "requirements.txt")
 STATE_FILE = os.path.join(VENV_DIR, "ecco_env.json")
-# The verify skill lives in a sibling skill dir; ecco-setup hands off to it so there
-# is ONE source of verification truth (setup never re-implements the checks itself).
-VERIFY_SCRIPT = os.path.normpath(
-    os.path.join(HERE, "..", "..", "ecco-setup-verify", "scripts", "verify_env.py")
-)
+# The verify script is a sibling in this skill's own scripts/ dir; setup hands off to it so
+# there is ONE source of verification truth (setup never re-implements the checks itself).
+# It's also runnable standalone (verify mode) — see the SKILL.md. Consolidated into this
+# skill 2026-08-06 (was formerly the separate ecco-setup-verify skill).
+VERIFY_SCRIPT = os.path.normpath(os.path.join(HERE, "verify_env.py"))
 
 PREFERRED_ORDER = ["3.12", "3.11"]
 FLOOR = (3, 11)
@@ -122,18 +122,18 @@ def install_hint():
 
 
 def run_verify():
-    """Hand off to the ecco-setup-verify skill so there is one source of
-    verification truth. Returns the verify script's exit code, or None if the
-    verify script can't be found (setup still succeeded; just report that)."""
+    """Hand off to the verify script (verify_env.py, in this skill's scripts/ dir) so there
+    is one source of verification truth. Returns the verify script's exit code, or None if
+    the verify script can't be found (setup still succeeded; just report that)."""
     if not os.path.exists(VERIFY_SCRIPT):
         log("")
-        log("[!] Could not locate ecco-setup-verify at:")
+        log("[!] Could not locate verify_env.py at:")
         log(f"    {VERIFY_SCRIPT}")
-        log("    Setup finished, but run the ecco-setup-verify skill manually to "
+        log("    Setup finished, but run ecco-setup in verify mode manually to "
             "confirm the environment.")
         return None
     log("")
-    log("Handing off to ecco-setup-verify to confirm the environment works ...")
+    log("Verifying the environment works (imports + real grid smoke test) ...")
     log("-" * 64)
     # Interpreter policy: the venv now exists, so run verify with the VENV python
     # (.venv/bin/python), NOT the system python3 that launched setup. We set
@@ -145,7 +145,7 @@ def run_verify():
         result = subprocess.run([vpy, VERIFY_SCRIPT], env=env)
         return result.returncode
     except OSError as e:
-        log(f"[!] Could not launch verify: {e}. Run the ecco-setup-verify skill "
+        log(f"[!] Could not launch verify: {e}. Run ecco-setup in verify mode "
             "manually.")
         return None
 

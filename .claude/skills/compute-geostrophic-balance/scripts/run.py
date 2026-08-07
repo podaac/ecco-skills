@@ -24,6 +24,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
+import ecco_preflight  # noqa: E402
+ecco_preflight.ensure_env("compute-geostrophic-balance")  # clear msg if env is unhealthy
 from ecco_common import load_grid, load_field, coriolis, grad_to_center  # noqa: E402
 
 DENSPRESS = "ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4"

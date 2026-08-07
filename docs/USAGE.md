@@ -55,6 +55,19 @@ python3 .claude/skills/ecco-setup/scripts/setup_env.py    # build .venv and veri
 
 Everything afterward runs with `.venv/bin/python` — no manual "activate" needed.
 
+**If a skill ever fails on the environment** (e.g. `no such file or directory: .venv/bin/python`
+because the gitignored `.venv` was deleted/never built, or an import error): run verify mode
+first to diagnose, then rebuild only if needed —
+
+```bash
+python3 .claude/skills/ecco-setup/scripts/verify_env.py     # verify mode: is the .venv there & healthy?
+python3 .claude/skills/ecco-setup/scripts/setup_env.py --reset   # rebuild if verify says it's missing/broken
+```
+
+Each calc/plot/data skill's `SKILL.md` opens with an **"Environment — do this first"** block
+saying the same, so an AI assistant driving the skills will self-heal the environment without
+being told. (A healthy `.venv` is reused automatically — this is a one-time build.)
+
 ## 3. Run a calculation
 
 ```bash
@@ -98,7 +111,7 @@ triggers:
 | **"Compute geostrophic velocities for a month."** | **1.** `load-grid` → **2.** `load-field` (density/pressure `RHOAnoma`,`PHIHYDcR`) → **3.** *compute* → **4.** *validate* | Grid supplies `dxC/dyC`, `YC`, and the xgcm object; the pressure gradient is differenced on the C-grid and interpolated to tracer points; `v_g = ρ⁻¹∂p/∂x / f`; runtime checks confirm grid position, units, and off-equator bounds. |
 | **"Reconstruct the deep currents from density"** / **"where does density set the vertical current shear?"** (thermal wind) | **1.** `load-grid` → **2.** `load-field` (density `RHOAnoma`) → **3.** *compute shear* `∂u/∂z,∂v/∂z` → **4.** *reconstruct velocity from z0=−3000 m* → **5.** *validate* → **6.** `load-field` (UVEL/VVEL) → **7.** *cross-check vs actual velocity* | Grid supplies `dxC/dyC`, `drC`, `Z/Zl/Zu`, `YC`; the density gradient gives the thermal-wind shear `(g/fρ)∂ρ/∂x`; integrating it up/down from a level of no motion reconstructs the velocity; the reconstruction is then compared to the model's **actual** UVEL/VVEL (the currents field is loaded only for this check). |
 | **"Show me a global map of sea-surface temperature."** | **1.** `load-grid` → **2.** `load-field` (THETA) → **3.** `plot-ecco-field` (`--mode global`) | Grid gives `XC/YC` for re-projection; the field is loaded for the requested month; the official `ecco_v4_py` plotter stitches the 13 tiles into a lat-lon PNG in `./plots/`. |
-| **"Set up my environment"** / **"is my environment working?"** | **1.** `ecco-setup` (`survey` → build `.venv` → install) → **2.** `ecco-setup-verify` (auto-handoff) | Surveys the machine's Python, builds the isolated `.venv`, installs the stack, then proves it works (imports + a real `ecco.get_llc_grid` smoke test). Verify is also runnable on its own. |
+| **"Set up my environment"** / **"is my environment working?"** | **1.** `ecco-setup` set-up mode (`survey` → build `.venv` → install → auto-run verify) — or **verify mode** alone for a health-check | Surveys the machine's Python, builds the isolated `.venv`, installs the stack, then proves it works (imports + a real `ecco.get_llc_grid` smoke test). Verify is a mode of the same skill and is also runnable on its own (no rebuild). |
 
 **Under every `load-grid` / `load-field` step** sits the shared `ecco_common` layer: check
 the local `./data/ecco` cache → on a miss, query the **NASA CMR** API for the granule's
@@ -116,7 +129,7 @@ open as xarray. You never call that layer directly; the skills compose it.
 ```
 .claude/skills/
 ├── ecco-setup/                 # build the project-local .venv (survey → install → verify)
-├── ecco-setup-verify/          # prove the environment/toolchain works
+│                               #   (+ verify_env.py: verify mode — health-check, no rebuild)
 ├── ecco-common/                # SHARED library: loaders, cache, CMR access, plots
 │   ├── ecco_common/            #   imported by every calc skill (composition backbone)
 │   ├── vendor/                 #   pinned official ecco_po_tutorials.py (verification reference)

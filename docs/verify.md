@@ -143,6 +143,19 @@ A calculation skill is **done** only when, in its `references/`:
 Absent any of these, the skill is **in progress**, and must be described that way (no
 "done"/"correct" claims).
 
+**"Done" ≠ "Scientist Verified" — two separate axes (do not conflate):**
+- **AI-verified / "done"** (everything above) means the skill cleared this project's
+  automated + adversarial ladder. It is the bar we can reach *without* a human expert.
+- **Scientist Verified** means a domain oceanographer has *personally* reviewed the
+  calculation and signed off that it's scientifically correct and answers the intended
+  question. This is a **strictly higher bar** — AI verification, however thorough, is not a
+  substitute for expert sign-off (that's the founding premise of this whole protocol). A
+  skill can be AI-"done" and still `Scientist Verified: ⏳ Pending`.
+- Track the flag per skill in `docs/verify-status.md`
+  (`Scientist Verified: ⏳ Pending` / `✅ Verified`). As of 2026-08-06 **every** science
+  skill is `⏳ Pending` — none has had expert review yet. Flip to `✅ Verified` only when an
+  oceanographer has actually reviewed it; record who and when.
+
 ---
 
 ## Honest limits

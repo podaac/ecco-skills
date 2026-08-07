@@ -13,6 +13,8 @@ import sys
 # Put the shared ecco_common package on the path (sibling skill dir).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
+import ecco_preflight  # noqa: E402
+ecco_preflight.ensure_env("load-grid")  # clear msg if env is unhealthy
 from ecco_common import load_grid  # noqa: E402
 
 

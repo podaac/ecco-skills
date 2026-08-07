@@ -43,6 +43,8 @@ import sys
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "ecco-common"))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "ecco-common", "vendor"))
+import ecco_preflight  # noqa: E402
+ecco_preflight.ensure_env("compute-steric-height")  # clear msg if env is unhealthy
 from ecco_common import load_grid, load_field, canon as _canon  # noqa: E402
 from jmd95 import densjmd95                     # vendored MITgcm JMD95 EOS  # noqa: E402
 

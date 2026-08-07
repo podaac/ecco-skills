@@ -18,11 +18,17 @@ Loads the ECCO **geometry** — the fixed description of the LLC90 grid — and 
 The geometry is a **single time-invariant file** (~8 MB) — there is no date to pick.
 Downloaded once via the CMR direct-URL path (see design.md) and cached; reused forever.
 
-## Prerequisite
+## Prerequisite — ensure the environment first
 
 The `ecco-setup` environment must exist (`.venv` with the ECCO libraries, xgcm < 0.10).
-Downloading also needs Earthdata Login credentials in `~/.netrc`. If loading fails with
-a 401, the credentials are missing/invalid.
+Downloading also needs Earthdata Login credentials in `~/.netrc` (a 401 = missing/invalid).
+**Before running, ensure the env is ready — don't run against a missing/broken `.venv`:**
+
+1. Check health: `python3 .claude/skills/ecco-setup/scripts/verify_env.py` (verify mode).
+2. If it reports **no `.venv`** or a failed import, **run `ecco-setup` first**
+   (`setup_env.py`, or `--reset` to rebuild), then re-run. A healthy `.venv` is reused
+   automatically. (Invoking `run.py` on an unhealthy env trips the built-in `ecco_preflight`
+   guard, which points you here; a *missing* `.venv` means `.venv/bin/python` won't exist.)
 
 ## How to use it
 

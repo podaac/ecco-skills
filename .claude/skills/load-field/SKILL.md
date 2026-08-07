@@ -19,10 +19,17 @@ them, and returns an xarray Dataset.
 Pair with `load-grid`: grid = the map (where/how big the cells are); field = the
 values on that map at a point in time.
 
-## Prerequisite
+## Prerequisite — ensure the environment first
 
-`ecco-setup` environment + Earthdata Login credentials in `~/.netrc` (a 401 on download
-means credentials are missing/invalid).
+Runs in the project `.venv` built by **`ecco-setup`** + needs Earthdata Login credentials in
+`~/.netrc` (a 401 on download means credentials are missing/invalid). **Before running,
+ensure the env is ready — don't run against a missing/broken `.venv`:**
+
+1. Check health: `python3 .claude/skills/ecco-setup/scripts/verify_env.py` (verify mode).
+2. If it reports **no `.venv`** or a failed import, **run `ecco-setup` first**
+   (`setup_env.py`, or `--reset` to rebuild), then re-run. A healthy `.venv` is reused
+   automatically. (Invoking `run.py` on an unhealthy env trips the built-in `ecco_preflight`
+   guard, which points you here; a *missing* `.venv` means `.venv/bin/python` won't exist.)
 
 ## Selecting time — use `months` (important)
 

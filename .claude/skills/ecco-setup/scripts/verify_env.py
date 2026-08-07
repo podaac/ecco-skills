@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
-ecco-setup-verify: prove the ECCO *environment* actually works.
+ecco-setup (verify mode): prove the ECCO *environment* actually works.
+
+This is the verify script for the `ecco-setup` skill — invoked automatically at the end of
+a build (`setup_env.py` hands off to it), AND runnable standalone anytime to re-check an
+existing environment without rebuilding (e.g. "is my env still OK?", or as first-line
+diagnostic when a calculation skill errors). (It formerly lived in a separate
+`ecco-setup-verify` skill; consolidated into `ecco-setup` 2026-08-06 — the standalone
+verify capability is preserved, just no longer a separate skill directory.)
 
 Scope: the .venv toolchain ONLY. This does NOT verify any oceanographic
 calculation or result — that is each calculation skill's own runtime validation.
@@ -28,8 +35,8 @@ import subprocess
 import sys
 
 # Project root derived from THIS FILE's location, not CWD, so verify works no matter
-# where it's launched from. File: <root>/.claude/skills/ecco-setup-verify/scripts/verify_env.py
-# -> root is four parents up from this file's dir (scripts -> ecco-setup-verify ->
+# where it's launched from. File: <root>/.claude/skills/ecco-setup/scripts/verify_env.py
+# -> root is four parents up from this file's dir (scripts -> ecco-setup ->
 #    skills -> .claude -> root).
 _HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(_HERE, "..", "..", "..", ".."))

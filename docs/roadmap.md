@@ -21,8 +21,8 @@ Interpreter policy).
 
 | Skill | Status | Purpose |
 |---|---|---|
-| **`ecco-setup`** | ✅ done | Survey Python → build `.venv` → install stack → auto-handoff to verify |
-| **`ecco-setup-verify`** | ✅ done | Prove the environment works (imports + real `get_llc_grid` smoke test) |
+| **`ecco-setup`** | ✅ done | Survey Python → build `.venv` → install stack → auto-run verify |
+| **`ecco-setup` — verify mode** | ✅ done | Prove the environment works (imports + real `get_llc_grid` smoke test). Consolidated into `ecco-setup` 2026-08-06 (was a separate `ecco-setup-verify` skill); still runnable standalone. |
 
 ---
 

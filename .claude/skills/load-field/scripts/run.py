@@ -13,6 +13,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "ecco-common"))
+import ecco_preflight  # noqa: E402
+ecco_preflight.ensure_env("load-field")  # clear msg if env is unhealthy
 from ecco_common import load_field  # noqa: E402
 
 

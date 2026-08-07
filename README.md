@@ -6,23 +6,46 @@ ECCO is a global ocean "state estimate": a physics-faithful reconstruction of th
 
 **ECCO Skills** are guardrails that let an AI assistant do these calculations the right way. You ask a question in plain language; the assistant runs a vetted, step-by-step recipe and shows its work — including the evidence that the answer is right.
 
-> **Status:** early but real. The foundations plus **two fully validated calculations** — ocean heat content and geostrophic balance — work today. More (ocean transports, budgets, and other diagnostics) are designed and on the way. See [Build status](#build-status).
+> **Status:** early but real. A tested data/environment foundation plus **five fully validated science calculations** — ocean heat content, geostrophic balance, thermal wind, wind-stress curl + Ekman pumping, and steric height — all built and independently error-checked. More (ocean transports, budgets) are designed and gated on domain-expert review. See [Build status](#build-status).
+
+---
+
+## Skills
+
+Each skill is a self-contained guardrail (guidance + vetted code + verification evidence). They compose bottom-up: the **science** skills chain the **data** and **grid** skills through the shared `ecco-common` library.
+
+| Skill | Kind | What it does | Scientist Verified |
+|-------|------|--------------|--------------------|
+| `ecco-setup` | 🌱 environment | Surveys the machine's Python, builds an isolated project-local `.venv` (3.11–3.12, pip only, no conda), installs the scientific stack — and **verifies** it works (imports + a real `ecco.get_llc_grid` smoke test). Has a standalone *verify mode* to health-check an existing environment without rebuilding. | ⏳ Pending |
+| `ecco-common` | ⚓ shared library | The building blocks every skill imports: data loaders, on-demand cache, direct NASA-CMR download, plotting, and Level-1 grid primitives (`grid_ops`). Not invoked directly. | ⏳ Pending |
+| `load-grid` | 🌊 data | Loads the LLC90 grid geometry (cell areas, distances, partial-cell fractions, masks, rotation angles) and builds the `xgcm` grid object. | ⏳ Pending |
+| `load-field` | 🌊 data | Downloads/caches any ECCO field (temperature, salinity, velocity, density/pressure, SSH, fluxes, stress) for chosen month(s)/day(s). | ⏳ Pending |
+| `plot-ecco-field` | 🌍 visualization | Renders any field to a PNG — single tile, all 13 tiles, or a geographically-correct stitched global map. | ⏳ Pending |
+| `compute-ocean-heat-content` | 🌡️ science | Global volume-weighted ocean heat content, and its change between two months. | ⏳ Pending |
+| `compute-geostrophic-balance` | 🌡️ science | Geostrophic velocities from the pressure field, on the native grid. | ⏳ Pending |
+| `compute-thermal-wind` | 🌡️ science | Vertical current shear from the horizontal density structure, plus velocity reconstruction from a level of no motion. | ⏳ Pending |
+| `compute-curl` | 🌡️ science | Vertical curl of a vector field (wind-stress curl) and the implied Ekman pumping, compared to the model's vertical velocity. | ⏳ Pending |
+| `compute-steric-height` | 🌡️ science | Steric height anomaly from density, with a thermosteric/halosteric decomposition; compared to sea-surface height. | ⏳ Pending |
+
+*"Scientist Verified" = a domain oceanographer has personally signed off on the calculation. All science skills are already **AI-verified** — cleared the full verification ladder including an independent adversarial "try to disprove it" review (see [`docs/verify-status.md`](docs/verify-status.md)) — but none has had a human-expert review yet, hence all ⏳ Pending. Designed but not yet built: section transports, tracer budgets, flux decomposition, Ekman transport, normalized-difference — most gated on domain-expert input.*
 
 ---
 
 ## What you can ask
 
-You don't need to know Python, the grid, or where the data lives. You ask; the assistant picks the right recipe, runs it in order, and narrates each step. Today's built calculations:
+You don't need to know Python, the grid, or where the data lives. You ask; the assistant picks the right recipe, runs it in order, and narrates each step.
 
 | You ask… | What you get back |
 |----------|-------------------|
-| **"How much has global ocean heat content changed between these two months?"** | The change in ocean heat content (in Joules), with a sanity-check trail — plausible temperature range, ocean-volume benchmark — so you can see it's trustworthy. |
-| **"Compute the geostrophic velocities for this month."** | Ocean current velocities implied by the pressure field, verified to match the official ECCO tutorial result *and* the model's own currents. |
-| **"If I only knew the ocean's density, how well could I reconstruct the deep currents?"** | Currents reconstructed from the density structure via thermal wind (integrated from a level of no motion), shown *alongside* how much they differ from the model's real currents — so you see both the estimate and its limits. |
-| **"Where does the density structure control the vertical shear of the currents?"** | The thermal-wind shear (how the current changes with depth), and where it does — and doesn't — explain the real flow. |
-| **"Show me a global map of sea-surface temperature."** | A publication-quality world map (PNG) of the field, correctly stitched across the whole globe. |
+| **"How much has global ocean heat content changed between January 2000 and January 2010?"** | The change in ocean heat content (in Joules), with a sanity-check trail — plausible temperature range, ocean-volume benchmark — so you can see it's trustworthy. |
+| **"Compute the geostrophic velocities for January 2008."** | Ocean current velocities implied by the pressure field, verified to match the official ECCO tutorial result *and* the model's own currents. |
+| **"For January 2015, if I only knew the ocean's density, how well could I reconstruct the deep currents?"** | Currents reconstructed from the density structure via thermal wind (integrated from a level of no motion), shown *alongside* how much they differ from the model's real currents — so you see both the estimate and its limits. |
+| **"Where does the density structure control the vertical shear of the currents in January 2010?"** | The thermal-wind shear (how the current changes with depth), and where it does — and doesn't — explain the real flow. |
+| **"Where is the wind driving surface water down into the ocean (Ekman pumping) in January 2010?"** | The wind-stress curl and the Ekman pumping velocity it drives, checked against the model's own vertical velocity — showing where the wind pumps water down (subtropical gyres) vs up (subpolar, Southern Ocean). |
+| **"How much of sea level is set by the ocean's density (steric height) in January 2000?"** | Steric height anomaly — the part of sea-surface height from the water column's temperature/salinity structure — split into thermosteric (temperature) and halosteric (salinity) contributions, and compared to the model's actual sea-surface height. |
+| **"Show me a global map of sea-surface temperature for June 2000."** | A publication-quality world map (PNG) of the field for that month, correctly stitched across the whole globe. |
 
-Each answer comes with its reasoning and a ✅ / ⚠️ verdict — never just a bare number. More questions (transports across a section, heat/salt budgets, Ekman pumping, steric height) are [designed and coming](#build-status).
+Any month (or pair of months) in 1992–2017 works — swap the dates above for whatever period you care about. Each answer comes with its reasoning and a ✅ / ⚠️ verdict — never just a bare number. Ocean transports across a section and heat/salt budgets are [designed and coming](#build-status).
 
 **Curious how a question turns into an answer?** See [`docs/USAGE.md`](docs/USAGE.md#what-actually-runs-when-you-ask-a-question) for the exact step-by-step each question triggers.
 
@@ -57,10 +80,12 @@ The full protocol is in [`docs/verify.md`](docs/verify.md); the current per-calc
 | Field maps / visualization | ✅ working |
 | **Ocean heat content** (and its change over time) | ✅ **done** — fully validated |
 | **Geostrophic velocities** | ✅ **done** — matches the official ECCO result and the model's own currents |
-| **Thermal wind** (vertical current shear from density + velocity reconstruction) | ⚠️ built & cross-checked against the model's own currents; final adversarial review pending |
-| Section transports, tracer budgets, Ekman pumping, steric height | 🔜 designed, not yet built (some await domain-expert review) |
+| **Thermal wind** (vertical current shear from density + velocity reconstruction) | ✅ **done** — matches ∂/∂z of geostrophy and the model's currents; adversarially reviewed |
+| **Wind-stress curl + Ekman pumping** | ✅ **done** — rotation matches the official ECCO helper; Ekman pumping tracks the model's vertical velocity |
+| **Steric height** (thermosteric/halosteric split) | ✅ **done** — reconstructs sea-surface height spatially; adversarially reviewed |
+| Section transports, tracer budgets, flux decomposition, Ekman transport | 🔜 designed, not yet built (gated on domain-expert review) |
 
-This is **not yet** a general-purpose ECCO system — it's a tested foundation with a few validated calculations and a planned path for the rest.
+This is a tested foundation with **five validated science calculations** and a planned path for the rest (the remaining calculations need domain-expert sign-off on benchmarks and conventions before they're built).
 
 ---
 

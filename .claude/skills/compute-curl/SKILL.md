@@ -54,6 +54,21 @@ gradient/curl tutorial):
 Both rotations use the identical `X·CS − Y·SN` (zonal) / `X·SN + Y·CS` (merid) formula.
 The second rotation is not optional: skipping it changes the curl by ~30% (teeth test).
 
+## Environment — do this first
+
+This skill runs in the project `.venv` built by **`ecco-setup`**. Before running it, make sure
+that environment is ready — **don't run against a missing or broken `.venv`**:
+
+1. Check health: `python3 .claude/skills/ecco-setup/scripts/verify_env.py` (verify mode).
+2. If it reports **no `.venv`** or a failed import, **run `ecco-setup` first**
+   (`python3 .claude/skills/ecco-setup/scripts/setup_env.py`, or `--reset` to rebuild a
+   broken one), then re-run this skill. Building is a one-time step; a healthy `.venv` is
+   reused automatically.
+
+(If you invoke `run.py` directly and the `.venv` is unhealthy, the built-in `ecco_preflight`
+guard prints a clear "run ecco-setup" message. If the `.venv` is missing entirely,
+`.venv/bin/python` won't exist — that's your cue to run `ecco-setup`.)
+
 ## How to run
 
 ```

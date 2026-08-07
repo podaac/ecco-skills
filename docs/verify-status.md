@@ -15,7 +15,18 @@ this file is the *status* (where each skill actually stands today).
 (or its N/A justified), a teeth-verified regression test exists, and it has passed a
 dedicated Rung-7 adversarial pass — with evidence recorded in its `references/`.
 
-_Last updated: 2026-07-25._
+**Two independent axes — don't conflate them:**
+- **AI-verified / "DONE"** (the rungs + the ✅/⚠️/🔴 above) = the skill has cleared this
+  project's automated + adversarial verification ladder. This is what the rung tables track.
+- **Scientist Verified** (⏳ Pending / ✅ Verified) = a domain oceanographer has *personally*
+  signed off on the calculation as scientifically correct and fit-for-purpose. This is a
+  **separate, higher bar** that AI verification cannot substitute for (AI confidence is not
+  expert sign-off — the founding principle of this project). **Every science skill is
+  currently `Scientist Verified: ⏳ Pending`**, even the AI-"DONE" ones — no human-expert
+  review has happened yet. Flip a skill to `✅ Verified` only when an oceanographer has
+  actually reviewed it, and record who/when.
+
+_Last updated: 2026-08-06._
 
 ---
 
@@ -38,6 +49,8 @@ _Last updated: 2026-07-25._
 SKILL.md; (ii) snapshot aliasing — documented; (iii) loose L3 volume-mean band — **fixed**
 (tightened `[0,10]` → `[2,6]` °C). Record: `compute-ocean-heat-content/references/acceptance.md`.
 
+**Scientist Verified: ⏳ Pending** — AI-verification complete; no domain-oceanographer sign-off yet.
+
 ### `compute-geostrophic-balance` (Recipe 2) — ✅ DONE (all applicable rungs cleared 2026-07-25)
 
 | Rung | Status | Evidence / gap |
@@ -55,6 +68,8 @@ strengthened the evidence (independent velocity check added). Documented limitat
 (not errors): model-axis output, coastal NaN-bleed, tile-seam `extend` — all inherited
 from the official reference. Record: `compute-geostrophic-balance/references/acceptance.md`.
 
+**Scientist Verified: ⏳ Pending** — AI-verification complete; no domain-oceanographer sign-off yet.
+
 ### `compute-thermal-wind` (Recipe 3) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
 | Rung | Status | Evidence / gap |
@@ -70,6 +85,8 @@ from the official reference. Record: `compute-geostrophic-balance/references/acc
 **Status: ✅ DONE** — all applicable rungs cleared, incl. a clean Rung-7 adversarial pass
 (one loose-threshold caveat found and fixed). Record:
 `compute-thermal-wind/references/acceptance.md`; review log: `docs/eval4.md`.
+
+**Scientist Verified: ⏳ Pending** — AI-verification complete; no domain-oceanographer sign-off yet.
 
 ### `compute-curl` (Recipe 6 / Q5) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
@@ -87,6 +104,8 @@ from the official reference. Record: `compute-geostrophic-balance/references/acc
 (one loose-teeth-threshold caveat found and fixed, 0.05→0.20). Build also fixed two
 design-doc errors (oceTAUX/Y are on faces not tracer points; the two rotations use the same
 formula). Record: `compute-curl/references/acceptance.md`; review log: `docs/eval5.md`.
+
+**Scientist Verified: ⏳ Pending** — AI-verification complete; no domain-oceanographer sign-off yet.
 
 ### `compute-steric-height` (Recipe 3-steric) — ✅ DONE (all applicable rungs cleared; Rung-7 pass 2026-08-06)
 
@@ -106,6 +125,8 @@ couldn't catch). Vendored the MITgcm JMD95 EOS (no EOS was available); a de-mean
 bug was fixed during the build. Record: `compute-steric-height/references/acceptance.md`;
 review log: `docs/eval6.md`.
 
+**Scientist Verified: ⏳ Pending** — AI-verification complete; no domain-oceanographer sign-off yet.
+
 ---
 
 ## Infrastructure skills
@@ -115,8 +136,8 @@ helpers where relevant + the `ecco-common` regression suite.)*
 
 | Skill | Status | Evidence | Gaps |
 |-------|--------|----------|------|
-| `ecco-setup` | ✅ | Wheels-only install, `--reset` re-resolves `xgcm<0.10`, auto-handoff, guided "no Python" stop — tested on macOS/arm64/3.12.13. | Linux/Windows testing TODO. |
-| `ecco-setup-verify` | ✅ | Exercises official `ecco.get_llc_grid` on real geometry; passes from any CWD. | — |
+| `ecco-setup` (set-up mode) | ✅ | Wheels-only install, `--reset` re-resolves `xgcm<0.10`, auto-runs verify, guided "no Python" stop — tested on macOS/arm64/3.12.13. | Linux/Windows testing TODO. |
+| `ecco-setup` (verify mode) | ✅ | Exercises official `ecco.get_llc_grid` on real geometry; passes from any CWD, and setup→verify handoff works from the new in-skill path. Consolidated from the former `ecco-setup-verify` skill 2026-08-06 (capability unchanged). | — |
 | `load-grid` | ✅ | Builds grid via official `ecco.get_llc_grid` (Rung 1); regression-covered; runs from any CWD. | — |
 | `load-field` | ✅ | CMR pagination, size-guard-by-filename, month/day midpoint selection, backfill, offline reuse, selector validation — 13-test suite, teeth-verified. | Download **checksum verification** not yet implemented (checksum captured only). |
 | `plot-ecco-field` | ✅ | Wraps official `ecco_v4_py` plotters (`plot_tile`/`plot_tiles`/`plot_proj_to_latlon_grid`); verified by producing a physically-correct global SST map + model-orientation tile. Headless (Agg → PNG). | Visual output not auto-regression-tested (would need image hashing); relies on the official plotter's own correctness. |
@@ -128,6 +149,8 @@ helpers where relevant + the `ecco-common` regression suite.)*
 | Suite | Count | Teeth-verified? |
 |-------|-------|-----------------|
 | `ecco-common/tests/test_ecco_common.py` | 13 | ✅ (reintroducing the size-guard sidecar bug fails it) |
+| `ecco-common/tests/test_grid_ops.py` | 5 (Level-1 primitives) | ✅ (grad_to_center matches the inline diff/interp sequence; coriolis signs) |
+| `ecco-common/tests/test_preflight.py` | 5 (environment guard) | ✅ (bogus-lib probe fails; healthy passes; exits non-zero on unhealthy) |
 | `compute-ocean-heat-content/scripts/test_validation.py` | 10 (+1 Rung-2 tutorial check) | ✅ (bad-input cases fail; land-NaN passes) |
 | `compute-geostrophic-balance/scripts/test_geostrophic.py` | Rung-1 match + 5 guards | ✅ (breaking equatorial mask fails it) |
 | `compute-thermal-wind/scripts/test_thermal_wind.py` | 3 cross-checks + 6 guards | ✅ (sign flip fails checks 1–3; dropping `g` fails check 3) |

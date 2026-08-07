@@ -48,6 +48,21 @@ reference profile is consistent with the model's density. It carries a published
 (`densjmd95(35.5, 3, 3000 dbar) = 1041.83267`) used as a self-test. Note: JMD95 wants
 pressure in **dbar**, so the Pa reference pressure is scaled by 1e-4.
 
+## Environment — do this first
+
+This skill runs in the project `.venv` built by **`ecco-setup`**. Before running it, make sure
+that environment is ready — **don't run against a missing or broken `.venv`**:
+
+1. Check health: `python3 .claude/skills/ecco-setup/scripts/verify_env.py` (verify mode).
+2. If it reports **no `.venv`** or a failed import, **run `ecco-setup` first**
+   (`python3 .claude/skills/ecco-setup/scripts/setup_env.py`, or `--reset` to rebuild a
+   broken one), then re-run this skill. Building is a one-time step; a healthy `.venv` is
+   reused automatically.
+
+(If you invoke `run.py` directly and the `.venv` is unhealthy, the built-in `ecco_preflight`
+guard prints a clear "run ecco-setup" message. If the `.venv` is missing entirely,
+`.venv/bin/python` won't exist — that's your cue to run `ecco-setup`.)
+
 ## How to run
 
 ```

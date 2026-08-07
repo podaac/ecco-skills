@@ -51,6 +51,21 @@ that rotation** (CS/SN rotation is orthogonal, so vector magnitudes are preserve
 correctness numbers are identical with or without rotation; rotation is a presentation step
 for maps only. Rotate with CS/SN if you need a geographic map.
 
+## Environment — do this first
+
+This skill runs in the project `.venv` built by **`ecco-setup`**. Before running it, make sure
+that environment is ready — **don't run against a missing or broken `.venv`**:
+
+1. Check health: `python3 .claude/skills/ecco-setup/scripts/verify_env.py` (verify mode).
+2. If it reports **no `.venv`** or a failed import, **run `ecco-setup` first**
+   (`python3 .claude/skills/ecco-setup/scripts/setup_env.py`, or `--reset` to rebuild a
+   broken one), then re-run this skill. Building is a one-time step; a healthy `.venv` is
+   reused automatically.
+
+(If you invoke `run.py` directly and the `.venv` is unhealthy, the built-in `ecco_preflight`
+guard prints a clear "run ecco-setup" message. If the `.venv` is missing entirely,
+`.venv/bin/python` won't exist — that's your cue to run `ecco-setup`.)
+
 ## How to run
 
 ```

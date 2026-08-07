@@ -67,7 +67,7 @@ Skills do **not** pass live Python objects to each other (a skill isn't a runnin
 
 This is why each skill is *both* a `SKILL.md` (guidance the agent follows) *and* thin `scripts/` that call shared helpers: the guidance explains the science; the shared library guarantees the mechanics are identical everywhere.
 
-Contrast with the **environment** skills (`ecco-setup` → `ecco-setup-verify`), which are deliberately **subprocess**-style (setup launches verify as a separate process) — correct there because they cross an interpreter boundary (system python vs venv python). Calculation skills all run in the one venv python, so shared imports are the cleaner fit.
+Contrast with the **environment** skill `ecco-setup` (and its verify mode), which is deliberately **subprocess**-style (setup launches verify as a separate process, and verify re-execs itself into the venv python) — correct there because it crosses an interpreter boundary (system python vs venv python). Calculation skills all run in the one venv python, so shared imports are the cleaner fit.
 
 ---
 
@@ -198,9 +198,14 @@ Where `hFacC` accounts for partial cells near topography.
 
 2. **`venv` + `pip` only — no conda.** We use Python's built-in `venv` and install from PyPI wheels. No conda, no mamba, no separate package manager to install first. This is a deliberate choice: `venv` ships with Python itself, so there's one less thing for a new user to obtain, and the environment is a plain folder the user fully understands and can delete.
 
-3. **A dedicated `ecco-setup` skill runs first.** It is a prerequisite of every calculation skill. Its job: check Python → create the venv → `pip install` pinned dependencies → verify the install → report a clear ✓/✗ to the user. Calculation skills check for a ready environment and, if absent, hand off to `ecco-setup` rather than failing cryptically.
+3. **A dedicated `ecco-setup` skill runs first.** It is a prerequisite of every calculation skill. Its job: check Python → create the venv → `pip install` pinned dependencies → verify the install → report a clear ✓/✗ to the user. Calculation skills check for a ready environment and, if absent/broken, point to `ecco-setup` rather than failing cryptically. **This "ensure the env, else run ecco-setup" intent must live in the shipped guidance — not just here as a principle, and not in any assistant's memory.** So (2026-08-06) it is enforced at THREE layers, in order of who acts:
+   - **(a) SKILL.md guidance (primary, memory-independent):** every calc/plot/data `SKILL.md` opens with an **"Environment — do this first"** block — check via `ecco-setup` verify mode, and if the `.venv` is missing/broken run `ecco-setup` first, then proceed. This is what makes the agent-driven flow ("user asks a science question → the skill figures out the env") work for *any* agent with no prior memory, since the instruction ships in the skill. *(This block was added 2026-08-06 after we found the auto-setup intent had only ever been a `design.md` principle, never written into the skills themselves.)*
+   - **(b) `ecco_preflight` code guard:** every calc/plot/load `run.py` calls `ecco_preflight.ensure_env(...)` — a stdlib-only guard (`.claude/skills/ecco-common/ecco_preflight.py`) that probes the critical libraries *before* importing the heavy `ecco_common` stack, and on failure prints a clear "environment unhealthy → run ecco-setup (verify / --reset)" message + exits non-zero, instead of a raw ImportError. It must be a standalone module (not part of `ecco_common`) because importing `ecco_common` is itself what would blow up on a broken env.
+   - **(c) verify mode** — the explicit health-check/diagnostic.
 
-4. **Setup and verify are two distinct phases, but one flow.** "Installed" ≠ "works." `ecco-setup` installs, then **automatically hands off to `ecco-setup-verify`** at the end (both fresh-build and reuse paths) — so a setup run always finishes verified, and setup's exit code reflects the verification result. `ecco-setup-verify` remains a **separate skill** you can run standalone to re-check an environment later (or as first-line diagnostic when a calc skill errors) without reinstalling. This keeps **one source of verification truth**: setup never re-implements the checks, it calls the verify script. *(Decided 2026-07-23; the alternative — merging into one skill — was rejected to preserve the standalone re-check.)*
+   **Two failure modes map onto these:** *unhealthy venv* (libs won't import) → caught in-code by `ensure_env` (b); *missing venv* (`.venv/bin/python` absent, so the script never starts, so no in-script guard can fire) → the SKILL.md guidance (a) tells the agent to run `ecco-setup`; a bare shell invocation just gets "no such file or directory", whose documented response is the same.
+
+4. **Setup and verify are two distinct phases, but one skill.** "Installed" ≠ "works." `ecco-setup` installs, then **automatically runs the verify step** at the end (both fresh-build and reuse paths) — so a setup run always finishes verified, and setup's exit code reflects the verification result. Verify is also a **standalone mode** (`scripts/verify_env.py`) you can run to re-check an environment later (or as first-line diagnostic when a calc skill errors) without reinstalling. This keeps **one source of verification truth**: setup never re-implements the checks, it calls the same verify script the standalone mode uses. *(History: verify began as a **separate `ecco-setup-verify` skill** — kept separate to preserve the standalone re-check. **Consolidated into `ecco-setup` as a mode on 2026-08-06**: the standalone verify capability is fully preserved [same `verify_env.py`, still directly runnable], but it's no longer a separate skill/catalog entry — simpler "which do I run?" while keeping the one-source-of-truth handoff and the interpreter-boundary re-exec unchanged. The subprocess/interpreter-boundary design below is unaffected by the merge — verify still crosses system-python → venv-python via re-exec.)*
 
 ### The compiled-dependency concern — resolved by wheels (verified)
 
@@ -272,7 +277,7 @@ Prefer the newest in-band (3.12 over 3.11) so users get the most current support
 
 Once `ecco-setup` creates `.venv/` with a chosen interpreter, **that venv is the environment for all subsequent skill runs.** Skills invoke `.venv`'s Python directly (no reliance on the user manually "activating" it each time — a step non-developers forget). The setup skill:
 - **Detects an existing, healthy `.venv/`** and reuses it instead of rebuilding (fast path: setup becomes a no-op that just confirms readiness).
-- **Records what it built** — the chosen interpreter path and resolved Python version — so later runs and `ecco-setup-verify` can confirm the same env.
+- **Records what it built** — the chosen interpreter path and resolved Python version — so later runs and the verify mode can confirm the same env.
 - Only rebuilds when the env is missing or fails verification.
 
 **Reset is a deliberate, separate action (implemented).** Because the venv persists, `ecco-setup --reset` deletes `.venv/` and rebuilds from scratch — for when deps get corrupted, the user wants a newer Python, or requirements change. Built and tested (a `--reset` rebuild re-resolves the `xgcm<0.10` pin to 0.9.0 and finishes verified).
@@ -294,8 +299,9 @@ Once `ecco-setup` creates `.venv/` with a chosen interpreter, **that venv is the
               matplotlib, netCDF4, cartopy, pyresample, dask, …)
 6. RECORD    Save chosen interpreter path + version (ecco_env.json) so later runs
              reuse this venv and verify can confirm the same interpreter.
-7. VERIFY    Hand off to ecco-setup-verify (imports + grid smoke test). Installed ≠
-             working. Setup's exit code = verify's result. (One source of truth.)
+7. VERIFY    Run the verify step — scripts/verify_env.py (imports + grid smoke test).
+             Installed ≠ working. Setup's exit code = verify's result. (One source of
+             truth; same script the standalone verify mode uses.)
 8. REPORT    Clear ✓/✗ + plain-language verdict; on verify failure, say it's not ready.
 ```
 
@@ -306,13 +312,13 @@ Cross-platform note: venv layout differs (`.venv/bin/` on macOS/Linux, `.venv/Sc
 A simple, strict rule so it's never ambiguous:
 
 - **System `python3` is used ONLY before the venv exists** — to run `survey.py` (read-only inspection) and to *create* the venv (`<python3.x> -m venv .venv`). Nothing that imports an ECCO library ever runs under system `python3`.
-- **`.venv/bin/python` (or `.venv/Scripts/python.exe`) is used for EVERYTHING afterward** — `pip install`, the verify handoff, `ecco-setup-verify`'s actual checks, and every calculation/plotting/data skill.
+- **`.venv/bin/python` (or `.venv/Scripts/python.exe`) is used for EVERYTHING afterward** — `pip install`, the verify handoff, verify's actual checks, and every calculation/plotting/data skill.
 
-Implementation detail: when `ecco-setup` hands off to verify, it launches `verify_env.py` **with the venv python** and sets `ECCO_VERIFY_INNER=1` so verify skips its self-re-exec. When `ecco-setup-verify` is run *standalone* with a system `python3`, its launcher bootstraps and immediately re-execs itself with the venv python — so the checks still run in the venv. Either way, all library work happens under one reproducible interpreter. *(Made explicit 2026-07-23 after noticing the handoff was hopping through system `python3`.)*
+Implementation detail: when `ecco-setup`'s build hands off to verify, it launches `verify_env.py` **with the venv python** and sets `ECCO_VERIFY_INNER=1` so verify skips its self-re-exec. When verify is run *standalone* (verify mode) with a system `python3`, its launcher bootstraps and immediately re-execs itself with the venv python — so the checks still run in the venv. Either way, all library work happens under one reproducible interpreter. *(Made explicit 2026-07-23 after noticing the handoff was hopping through system `python3`.)*
 
-### `ecco-setup-verify` — proving the *environment* actually works
+### Verify mode — proving the *environment* actually works
 
-**Scope: the environment/toolchain only.** This skill verifies that the `.venv` built by `ecco-setup` is healthy — it does **not** verify any oceanographic calculation or result (that is what each calculation skill's own runtime validation does; see the Validation section). The name is deliberately `ecco-setup-verify`, not `ecco-verify`, so a user is never confused into thinking it checks their science. Pair it with `ecco-setup`; it's re-runnable anytime a user wants to sanity-check the environment.
+**Scope: the environment/toolchain only.** Verify mode confirms that the `.venv` built by `ecco-setup` is healthy — it does **not** verify any oceanographic calculation or result (that is what each calculation skill's own runtime validation does; see the Validation section). It is deliberately scoped to the *environment*, not the science, so a user is never confused into thinking it checks their results. It's re-runnable anytime a user wants to sanity-check the environment (no rebuild).
 
 It is itself a worked example of **Validation Layer 1** applied to the toolchain:
 
@@ -329,7 +335,7 @@ It is itself a worked example of **Validation Layer 1** applied to the toolchain
 
 ### Teach as we go (Design Principle #8 applied to setup)
 
-For a non-developer, setup *is* the scariest part. The `ecco-setup` / `ecco-setup-verify` skills should explain, in plain language, what a virtual environment is and why we use one ("a sandbox for this project's tools so we don't disturb the rest of your computer"), what each step is doing, and — on failure — what went wrong and the specific next action, never a raw stack trace with no guidance. A successful setup should leave the user understanding *what was built and how to remove it*, not just that a wall of text scrolled by.
+For a non-developer, setup *is* the scariest part. The `ecco-setup` skill (both its set-up and verify modes) should explain, in plain language, what a virtual environment is and why we use one ("a sandbox for this project's tools so we don't disturb the rest of your computer"), what each step is doing, and — on failure — what went wrong and the specific next action, never a raw stack trace with no guidance. A successful setup should leave the user understanding *what was built and how to remove it*, not just that a wall of text scrolled by.
 
 ### Open items to confirm at build time
 - Exact pinned versions for a known-good environment (build and freeze a working `requirements.txt`; the closure/smoke tests are the acceptance gate).
@@ -362,7 +368,7 @@ xgcm_grid.interp_2d_vector({"X": u_field, "Y": v_field}, boundary='extend')
 > **✅ RESOLVED — the snippets above (old `boundary=` API) are CORRECT for our pinned environment.** We pin **xgcm < 0.10** (0.9.0 verified), because:
 > - xgcm 0.10 *removed* the `periodic=` argument, and **`ecco_v4_py` 1.8.1's own `get_llc_grid()` calls `xgcm.Grid(ds, periodic=False, ...)`** — so ECCO's packaged grid constructor **crashes under xgcm ≥ 0.10**. This is a library bug (ecco_v4_py declares only `xgcm>=0.5.0`, no upper bound).
 > - With xgcm 0.9.0, `ecco.get_llc_grid()` works and the `boundary=`/`fill_value=` diff API above is exactly right — **tutorial code runs verbatim.**
-> - Verified 2026-07-23 against the real geometry file: `get_llc_grid` succeeds and a diff correctly staggers `i → i_g` (tracer→U-point). The `ecco-setup-verify` skill now tests this exact call.
+> - Verified 2026-07-23 against the real geometry file: `get_llc_grid` succeeds and a diff correctly staggers `i → i_g` (tracer→U-point). `ecco-setup`'s verify mode now tests this exact call.
 > - **Do not** relax the `xgcm<0.10` pin without re-testing `ecco.get_llc_grid()`.
 
 ---
@@ -386,7 +392,7 @@ xgcm_grid.interp_2d_vector({"X": u_field, "Y": v_field}, boundary='extend')
 > everything the skills do. (All "CMR" references in this repo mean the NASA Common
 > Metadata Repository API at `cmr.earthdata.nasa.gov`, never an MCP tool.)
 
-> **Credentials prerequisite (NASA Earthdata Login).** Downloading ECCO from PO.DAAC requires a free **Earthdata Login** account and credentials stored locally (typically a `.netrc` file, or an Earthdata token). This is a *separate* setup step from the Python environment and is a common first-time stumbling block. The `ecco-setup` / `ecco-setup-verify` skills should: check for working credentials, walk a new user through creating an Earthdata account and the `.netrc` if missing, and confirm access with a single small test download **before** any real calculation attempts to pull data. Treat "no credentials" as a clear, guided stop — not a cryptic download error.
+> **Credentials prerequisite (NASA Earthdata Login).** Downloading ECCO from PO.DAAC requires a free **Earthdata Login** account and credentials stored locally (typically a `.netrc` file, or an Earthdata token). This is a *separate* setup step from the Python environment and is a common first-time stumbling block. The `ecco-setup` skill should: check for working credentials, walk a new user through creating an Earthdata account and the `.netrc` if missing, and confirm access with a single small test download **before** any real calculation attempts to pull data. Treat "no credentials" as a clear, guided stop — not a cryptic download error.
 
 The tutorials use `ecco_access` for downloads:
 
@@ -1027,7 +1033,7 @@ These are separate and must not be conflated (the naming reflects it):
 
 | Kind | Question it answers | Scope | When it runs | Named / defined as |
 |------|--------------------|-------|-------------|--------------------|
-| **Environment verification** | "Is the toolchain/venv working?" | the `.venv` + libraries | on demand, anytime | the **`ecco-setup-verify`** skill (env only — nothing scientific) |
+| **Environment verification** | "Is the toolchain/venv working?" | the `.venv` + libraries | on demand, anytime | **`ecco-setup` verify mode** (env only — nothing scientific) |
 | **Runtime validation** | "Is *this answer* trustworthy?" | one calculation's output | every time a calc skill runs | the **6 layers below**, reported live to the user |
 | **Acceptance testing** | "Is this skill *correctly implemented*?" | one skill's code | once, during development, by us | **build-time acceptance test** (see end of this section) |
 
@@ -1137,12 +1143,13 @@ These are candidate utilities to incorporate into our skills.
 
 ## Next Steps
 
-1. ✅ **`ecco-setup` + `ecco-setup-verify` built and tested** (`.claude/skills/`) — survey + venv builder + `requirements.txt`; verify skill checks Python band, imports all 11 libs, and runs the real `ecco.get_llc_grid` smoke test. **`ecco-setup` auto-hands off to `ecco-setup-verify`** on both reuse and fresh-build paths (one source of verification truth; setup's exit code = verify's result). Verified on macOS/arm64/Python 3.12.13: all deps install as wheels; a from-scratch `--reset` rebuild resolves the `xgcm<0.10` pin to 0.9.0 and finishes "verified"; the "no venv" guided-failure path also tested. **Remaining:** test on Linux/Windows and on a machine lacking a supported Python; freeze an exact `pip freeze` lockfile.
+1. ✅ **`ecco-setup` built and tested** (`.claude/skills/`, with a set-up mode and a verify mode) — survey + venv builder + `requirements.txt`; verify checks Python band, imports all 11 libs, and runs the real `ecco.get_llc_grid` smoke test. **The build auto-runs verify** on both reuse and fresh-build paths (one source of verification truth; setup's exit code = verify's result). *(Verify was a separate `ecco-setup-verify` skill until 2026-08-06, when it was consolidated into `ecco-setup` as a mode — capability unchanged.)* Verified on macOS/arm64/Python 3.12.13: all deps install as wheels; a from-scratch `--reset` rebuild resolves the `xgcm<0.10` pin to 0.9.0 and finishes "verified"; the "no venv" guided-failure path also tested. **Remaining:** test on Linux/Windows and on a machine lacking a supported Python; freeze an exact `pip freeze` lockfile.
 2. ✅ **`ecco-common` shared library + `load-grid` + `load-field` built and tested** (2026-07-23) — Option A composition (see architecture section). `ecco_common` provides `load_grid()`, `load_field()`, CMR-direct download with `.netrc` auth (bypasses the unreliable `ecco_access`), and a project-local `./data/ecco` cache. Verified end-to-end: grid downloads+builds the xgcm object, fields download by month, cache-hits work, the `months=` selector avoids the month-edge overlap gotcha, and the >1 GB size guard fires. `./data` and `.venv` gitignored.
    **Hardened 2026-07-25 (external-eval round 1):** (a) **project root derived from file location, not `os.getcwd()`** — loaders/setup/verify now work from any CWD; (b) **offline cache reuse** via a `cache_index.json`; (c) **CMR pagination** via `CMR-Search-After`; (d) verify reads the project cache, not `~/Downloads`.
    **Hardened 2026-07-25 (external-eval round 2):** (e) **daily collections** + `concept_id_for()` live CMR ShortName resolution; (f) **`load_field` selector validation**; (g) **cache index backfill** + atomic writes; (h) **OHC time-coordinate check**; (i) L2 relabeled "numeric sanity."
    **Hardened 2026-07-25 (external-eval round 3):** (j) **size-guard reads the `.nc` entry by filename** (not the first MB entry, which could be the `.sha512` sidecar → wildly under-count); checksum now captured; (k) **size guard applied once over the whole request** (per-key checking leaked a 40-day/1.2 GB request through — found by testing); (l) **`days=['YYYY-MM-DD']` selector** for daily data (midnight-edge overlap, mirrors `months=`); (m) **daily backfill fix** — index key regex now handles `YYYY-MM-DD`, not just `YYYY-MM` (daily offline reuse was silently broken).
-   **Automated test suite added 2026-07-25 (eval-round-3 finding #4):** `.claude/skills/ecco-common/tests/test_ecco_common.py` — **13 offline tests** (monkeypatched CMR + fake downloads, temp-dir cache; no network/credentials) covering size-by-filename vs sidecar, CMR pagination token order, whole-request size guard (small/large/assume_yes/unknown-size), month+day midpoint ranges, daily+monthly key extraction, cache backfill, atomic index write, selector validation, live ShortName resolution, and offline reuse. Verified the suite has teeth (reintroducing the sidecar bug fails it). `.claude/skills/run_all_tests.py` runs all suites (23 tests: 13 + 10 OHC). **Remaining:** wire into CI; exact lockfile; cached-file checksum *verification* (captured, not yet checked); index locking for concurrent runs; `.netrc` credential UX.
+   **Automated test suite added 2026-07-25 (eval-round-3 finding #4):** `.claude/skills/ecco-common/tests/test_ecco_common.py` — **13 offline tests** (monkeypatched CMR + fake downloads, temp-dir cache; no network/credentials) covering size-by-filename vs sidecar, CMR pagination token order, whole-request size guard (small/large/assume_yes/unknown-size), month+day midpoint ranges, daily+monthly key extraction, cache backfill, atomic index write, selector validation, live ShortName resolution, and offline reuse. Verified the suite has teeth (reintroducing the sidecar bug fails it). `.claude/skills/run_all_tests.py` runs all suites (originally 23 tests: 13 + 10 OHC; since grown to 8 suites as the science skills, `grid_ops`, and `ecco_preflight` were added — run the runner for the live count). **Remaining:** wire into CI; exact lockfile; cached-file checksum *verification* (captured, not yet checked); index locking for concurrent runs; `.netrc` credential UX.
+   **Environment guard added 2026-08-06:** `ecco-common/ecco_preflight.py` (stdlib-only `ensure_env()` — probes the critical libs before the heavy `ecco_common` import and prints a clear "run ecco-setup" message on a broken venv). Wired into all 8 calc/plot/load `run.py` scripts; covered by `ecco-common/tests/test_preflight.py` (5 offline tests). See the Environment & Setup section, point 3.
 3. Give each skill a closure/residual test that uses ECCO's exact conservation as the correctness oracle.
 4. Build Level 2-3 skills on top of Level 0-1.
 5. ✅ **Recipe 1 (OHC) built and tested** (`compute-ocean-heat-content`, 2026-07-23) — the reference calculation skill. Chains `load_grid`+`load_field` (Option A), volume-weights `THETA·rhoConst·Cp·rA·drF·hFacC`, prints an L1/L2/L3/L6 validation trail, and reports OHC *change* between two months. Acceptance: volume-mean THETA 3.59 degC (matches known ~3.5), ocean volume within 0.4% of literature, Jan2000→2010 change +7.8e22 J (right sign/magnitude). Established the calc-skill pattern + `references/acceptance.md`. **Negative+positive validation tests** (`scripts/test_validation.py`, now 10 cases): guards proven to *fire* on bad input and pass on good. **Hardened 2026-07-25 (external-eval fix #4):** L1 now checks for **non-finite values in wet cells** (a wet-cell NaN previously passed silently); L2 is now a real finiteness/volume>0 assertion, not an unconditional ✓. New tests cover wet-cell NaN (fails), land-cell NaN (still passes), and non-finite mean (fails). **TODO:** seasonal averaging for rigorous trends; a full end-to-end golden-value regression (not just the unit-level guard tests).
